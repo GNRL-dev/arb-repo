@@ -3,6 +3,6 @@
     "description": "Cloudstream Arabic Plugin Repository",
     "manifestVersion": 1,
     "pluginLists": [
-      "https://raw.githubusercontent.com/GNRL-dev/arb-repo/refs/heads/build/repo.json"
+      "https://raw.githubusercontent.com/GNRL-dev/arb-repo/build/repo.json"
     ]
   }
