@@ -17,7 +17,7 @@
         ],
         "version": 2,
         "internalName": "AkwamProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/AkwamProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/AkwamProvider.cs3",
         "name": "AkwamProvider"
     },
     {
@@ -35,7 +35,7 @@
         ],
         "version": 2,
         "internalName": "AnimeiatProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/AnimeiatProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/AnimeiatProvider.cs3",
         "name": "AnimeiatProvider"
     },
     {
@@ -54,7 +54,7 @@
         ],
         "version": 3,
         "internalName": "ArabSeedProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/ArabSeedProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/ArabSeedProvider.cs3",
         "name": "ArabSeedProvider"
     },
     {
@@ -73,7 +73,7 @@
         ],
         "version": 1,
         "internalName": "CimaNowProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/CimaNowProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/CimaNowProvider.cs3",
         "name": "CimaNowProvider"
     },
     {
@@ -93,7 +93,7 @@
         ],
         "version": 4,
         "internalName": "EgyDeadProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/EgyDeadProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/EgyDeadProvider.cs3",
         "name": "EgyDeadProvider"
     },
     {
@@ -114,7 +114,7 @@
         "version": 1,
         "internalName": "Extractors",
         "description": "This is required to be downloaded.",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/Extractors.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/builds/Extractors.cs3",
         "name": "Extractors"
     },
     {
@@ -135,7 +135,7 @@
         ],
         "version": 7,
         "internalName": "FaselHDProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/FaselHDProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/FaselHDProvider.cs3",
         "name": "FaselHDProvider"
     },
     {
@@ -155,7 +155,7 @@
         ],
         "version": 3,
         "internalName": "GateAnimeProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/GateAnimeProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/GateAnimeProvider.cs3",
         "name": "GateAnimeProvider"
     },
     {
@@ -175,7 +175,7 @@
         ],
         "version": 8,
         "internalName": "MyCimaProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/MyCimaProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/MyCimaProvider.cs3",
         "name": "MyCimaProvider"
     },
     {
@@ -196,7 +196,7 @@
         ],
         "version": 7,
         "internalName": "Shahid4uProvider",
-        "url": "https://codeberg.org/cloudstream/arab/raw/branch/builds/Shahid4uProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/blob/build/Shahid4uProvider.cs3",
         "name": "Shahid4uProvider"
     }
 ]
