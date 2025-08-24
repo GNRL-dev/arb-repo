@@ -35,7 +35,7 @@
         ],
         "version": 2,
         "internalName": "AnimeiatProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/AnimeiatProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/AnimeiatProvider.cs3",
         "name": "AnimeiatProvider"
     },
     {
@@ -54,7 +54,7 @@
         ],
         "version": 3,
         "internalName": "ArabSeedProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/ArabSeedProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/ArabSeedProvider.cs3",
         "name": "ArabSeedProvider"
     },
     {
@@ -73,7 +73,7 @@
         ],
         "version": 1,
         "internalName": "CimaNowProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/CimaNowProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/CimaNowProvider.cs3",
         "name": "CimaNowProvider"
     },
     {
@@ -93,7 +93,7 @@
         ],
         "version": 4,
         "internalName": "EgyDeadProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/EgyDeadProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/EgyDeadProvider.cs3",
         "name": "EgyDeadProvider"
     },
     {
@@ -114,7 +114,7 @@
         "version": 1,
         "internalName": "Extractors",
         "description": "This is required to be downloaded.",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/builds/Extractors.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/builds/Extractors.cs3",
         "name": "Extractors"
     },
     {
@@ -135,7 +135,7 @@
         ],
         "version": 7,
         "internalName": "FaselHDProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/FaselHDProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/FaselHDProvider.cs3",
         "name": "FaselHDProvider"
     },
     {
@@ -155,7 +155,7 @@
         ],
         "version": 3,
         "internalName": "GateAnimeProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/GateAnimeProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/GateAnimeProvider.cs3",
         "name": "GateAnimeProvider"
     },
     {
@@ -175,7 +175,7 @@
         ],
         "version": 8,
         "internalName": "MyCimaProvider",
-        "url": "https://github.com/GNRL-dev/arb-repo/build/MyCimaProvider.cs3",
+        "url": "https://github.com/GNRL-dev/arb-repo/raw/build/MyCimaProvider.cs3",
         "name": "MyCimaProvider"
     },
     {
