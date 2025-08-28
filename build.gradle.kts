@@ -71,7 +71,7 @@ subprojects {
 
         // Stubs for all Cloudstream classes
        // apk("com.lagradost:cloudstream3:1.0.0")
-        apk("com.github.recloudstream:cloudstream:8d5a95efcd") // Match same commit as plugin
+          apk("com.github.recloudstream:cloudstream:8d5a95efcd") // Match same commit as plugin
 
 
         // these dependencies can include any of those which are added by the app,
