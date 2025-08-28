@@ -1,13 +1,15 @@
-version = 1
+android {
+    namespace = "com.mycima"
 
-cloudstream {
-    authors = listOf( "ImZaw" )
+    compileSdk = 34
 
-	language = "ar"
-	
-    status = 1
+    defaultConfig {
+        minSdk = 21
+        targetSdk = 34
+    }
 
-    tvTypes = listOf( "TvSeries" , "Movie" )
-
-    iconUrl = "https://www.google.com/s2/favicons?domain=cimanow.cc&sz=%size%"
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
