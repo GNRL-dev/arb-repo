@@ -10,11 +10,11 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:7.0.4")
+        classpath("com.android.tools.build:gradle:8.1.0")
         // Cloudstream gradle plugin which makes everything work and builds plugins
-       // classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
-        classpath("com.github.recloudstream:gradle:8d5a95efcd")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.10")
+          classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
+     //   classpath("com.github.recloudstream:gradle:8d5a95efcd")
+          classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
     }
 }
 
@@ -41,16 +41,16 @@ subprojects {
     }
 
     android {
-        compileSdkVersion(30)
+        compileSdkVersion(34)
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 30
+            targetSdk = 34
         }
 
         compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_1_8
-            targetCompatibility = JavaVersion.VERSION_1_8
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
         }
 
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
@@ -70,8 +70,8 @@ subprojects {
         val implementation by configurations
 
         // Stubs for all Cloudstream classes
-       // apk("com.lagradost:cloudstream3:1.0.0")
-          apk("com.github.recloudstream:cloudstream:8d5a95efcd") // Match same commit as plugin
+            apk("com.lagradost:cloudstream3:pre_release")
+       //   apk("com.github.recloudstream:cloudstream:8d5a95efcd") // Match same commit as plugin
 
 
         // these dependencies can include any of those which are added by the app,
