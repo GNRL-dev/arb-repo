@@ -76,7 +76,7 @@ subprojects {
         val apk by configurations
         val implementation by configurations
 
-        apk("com.lagradost:cloudstream3:3.1.2")
+        apk("com.lagradost:cloudstream3:pre-release")
 
         //implementation(kotlin("stdlib"))
         implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
