@@ -11,8 +11,8 @@ buildscript {
 
     dependencies {
         classpath("com.android.tools.build:gradle:8.3.0")
-        classpath("com.github.recloudstream:gradle:3.1.2")
-       // classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
+     //   classpath("com.github.recloudstream:gradle:3.1.2")
+        classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
     }
 }
