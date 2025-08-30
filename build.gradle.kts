@@ -29,7 +29,7 @@ fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByN
 
 subprojects {
     apply(plugin = "com.android.library")
-   // apply(plugin = "kotlin-android")
+    apply(plugin = "kotlin-android")
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
@@ -41,10 +41,9 @@ subprojects {
 
         defaultConfig {
             minSdk = 21
-        }
+            targetSdk = 34}
         lint {
-        targetSdk = 34
-    }  
+            abortOnError = false}  
     }
         
 
