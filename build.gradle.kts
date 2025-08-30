@@ -41,8 +41,12 @@ subprojects {
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 34
         }
+        lint {
+        targetSdk = 34
+    }  
+    }
+        
 
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_17
@@ -81,6 +85,6 @@ subprojects {
     }
 }
 
-task<Delete>("clean") {
-    delete(rootProject.buildDir)
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
 }
