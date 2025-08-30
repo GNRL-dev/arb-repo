@@ -83,6 +83,10 @@ lint {
 }
 
 // Clean task at root level
+//tasks.register<Delete>("clean") {
+    //delete(rootProject.layout.buildDirectory)
 tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+    delete(rootProject.layout.buildDirectory.asFile)
+}
+
 }
