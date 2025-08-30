@@ -46,6 +46,9 @@ subprojects {
             minSdk = 21
             targetSdk = 34
         }
+lint {
+        targetSdk = 34  // For lint configuration
+    }
 
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_17
