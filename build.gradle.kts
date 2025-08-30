@@ -40,15 +40,18 @@ subprojects {
     }
 
     android {
-        compileSdkVersion(34)
+        compileSdk = 34
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 34
+            targetSdk = 34 // targetSdk should remain here
         }
-       lintoptions {
-        targetSdk = 34  // For lint configuration
-          }
+
+        // Correct lint block for lint configuration
+        lint {
+            checkDependencies = true // Example lint option
+            // Add more lint configuration options if necessary
+        }
 
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_17
@@ -83,9 +86,6 @@ subprojects {
 }
 
 // Clean task at root level
-//tasks.register<Delete>("clean") {
-    //delete(rootProject.layout.buildDirectory)
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory.asFile)
 }
-
