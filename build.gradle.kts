@@ -44,13 +44,7 @@ subprojects {
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 34 // targetSdk should remain here
-        }
-
-        // Correct lint block for lint configuration
-        lint {
-            checkDependencies = true // Example lint option
-            // Add more lint configuration options if necessary
+            targetSdk = 34  // Correct place for targetSdk
         }
 
         compileOptions {
