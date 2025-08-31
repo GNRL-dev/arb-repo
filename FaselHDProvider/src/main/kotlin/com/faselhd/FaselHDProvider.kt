@@ -8,6 +8,9 @@ import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import org.jsoup.nodes.Element
+import com.lagradost.cloudstream3.MainAPI
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.TvType
 
 class FaselHD : MainAPI() {
     override var lang = "ar"
