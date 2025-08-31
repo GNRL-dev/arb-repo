@@ -24,7 +24,7 @@ class FaselHD : MainAPI() {
 
     private fun String.getIntFromText(): Int? {
         return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
-        override fun getMainPage(): HomePageResponse {
+    override fun getMainPage(): HomePageResponse {
         // Must be implemented if hasMainPage = true
         return HomePageResponse(...)
         }
