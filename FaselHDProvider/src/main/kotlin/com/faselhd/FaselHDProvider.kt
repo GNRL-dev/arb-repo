@@ -17,7 +17,7 @@ class FaselHD : MainAPI() {
     private val alternativeUrl = "https://www.faselhds.life"
     override var name = "FaselHD"
     override val usesWebView = false
-    override val hasMainPage = true
+    override val hasMainPage = false
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie, TvType.AsianDrama, TvType.Anime)
     private val cfKiller = CloudflareKiller()
 
