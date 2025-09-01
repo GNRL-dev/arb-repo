@@ -54,7 +54,7 @@ class FaselHD : MainAPI() {
 
         return HomePageResponse(homeLists)
     }*/
-    override suspend fun getMainPage(
+/*    override suspend fun getMainPage(
     page: Int,
     request: MainPageRequest
 ): HomePageResponse {
@@ -68,7 +68,30 @@ class FaselHD : MainAPI() {
 
     return HomePageResponse(homeLists)
 }
+*/
 
+override suspend fun getMainPage(
+    page: Int,
+    request: MainPageRequest
+): HomePageResponse {
+    val sectionUrl = when (request.name) {
+        "Movies" -> "$mainUrl/category/movies"
+        "Series" -> "$mainUrl/category/series"
+        "Anime" -> "$mainUrl/category/anime"
+        else -> mainUrl
+    }
+
+    val url = if (page == 1) sectionUrl else "$sectionUrl/page/$page/"
+    val doc = app.get(url).document
+    val homeLists = ArrayList<HomePageList>()
+
+    val section = doc.select("div#postList")
+    val items = section.select("div.postDiv").mapNotNull { it.toSearchResponse() }
+
+    homeLists.add(HomePageList(request.name ?: "أحدث الإضافات", items))
+
+    return HomePageResponse(homeLists)
+}
 
     override suspend fun load(url: String): LoadResponse {
         var doc = app.get(url).document
