@@ -42,7 +42,8 @@ class FaselHD : MainAPI() {
         }
     }
 
-    override suspend fun getMainPage(): HomePageResponse {
+  //  override suspend fun getMainPage(): HomePageResponse
+    override suspend fun getMainPage(request: MainPageRequest): HomePageResponse {
         val doc = app.get(mainUrl).document
         val homeLists = ArrayList<HomePageList>()
 
