@@ -26,7 +26,7 @@ cloudstream {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-}*/
+}
 
 dependencies {
     implementation("com.github.recloudstream.cloudstream:library:v4.5.2")
@@ -36,4 +36,4 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.+")
     implementation("org.mozilla:rhino:1.7.14")
     apk("com.lagradost:cloudstream3:pre-release")
-}
+}*/
