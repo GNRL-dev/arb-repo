@@ -10,7 +10,7 @@ cloudstream {
     description = "Arabic streaming plugin for Cloudstream"
     status = 1
     tvTypes = listOf("Movie", "TvSeries")
-    Version = 1
+ //   Version = 1
   //  id = "faselhd.provider"
 }
 
