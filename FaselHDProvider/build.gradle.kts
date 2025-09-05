@@ -1,8 +1,8 @@
-plugins {
+/* plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("com.lagradost.cloudstream3.gradle")
-}
+}*/
 version = 1
 
 cloudstream {
@@ -14,7 +14,7 @@ cloudstream {
   //  id = "faselhd.provider"
 }
 
-android {
+/* android {
     namespace = "com.faselhd"
     compileSdk = 35
 
@@ -26,7 +26,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-}
+}*/
 
 dependencies {
     implementation("com.github.recloudstream.cloudstream:library:v4.5.2")
