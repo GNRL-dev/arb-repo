@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.lagradost.cloudstream3.gradle")
 }
+version = 1
 
 cloudstream {
     language = "ar"
@@ -10,7 +11,6 @@ cloudstream {
     description = "Arabic streaming plugin for Cloudstream"
     status = 1
     tvTypes = listOf("Movie", "TvSeries")
-    Version = 1
   //  id = "faselhd.provider"
 }
 
