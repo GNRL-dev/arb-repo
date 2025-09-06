@@ -1,6 +1,6 @@
 import com.lagradost.cloudstream3.gradle.CloudstreamExtension
 import com.android.build.gradle.BaseExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+//import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 buildscript {
@@ -55,10 +55,10 @@ subprojects {
         }
     }
 
-    // ✅ Kotlin 2.0+ compilerOptions DSL
+    /* ✅ Kotlin 2.0+ compilerOptions DSL
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JvmTarget.JVM_1.8)
             freeCompilerArgs.addAll(
                 "-Xno-call-assertions",
                 "-Xno-param-assertions",
@@ -66,11 +66,23 @@ subprojects {
                 "-Xskip-metadata-version-check"
             )
         }
+    }*/
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "1.8"
+        freeCompilerArgs = listOf(
+            "-Xno-call-assertions",
+            "-Xno-param-assertions",
+            "-Xno-receiver-assertions",
+            "-Xskip-metadata-version-check"
+        )
     }
+}
+
 
     dependencies {
         add("implementation", "com.github.recloudstream.cloudstream:library:v4.5.2")
-        add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
+        add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:1.7.10")
         add("implementation", "com.github.Blatzar:NiceHttp:0.4.13")
         add("implementation", "org.jsoup:jsoup:1.21.2")
         add("implementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.+")
