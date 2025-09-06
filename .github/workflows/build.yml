@@ -43,7 +43,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Remove invalid SDK directories (like android-33x, android-34x)
-         run: |
+        run: |
           echo "Removing invalid SDK platform folders..."
           find $ANDROID_SDK_ROOT/platforms -maxdepth 1 -type d -name 'android-*' | grep -E 'android-[0-9]+[^0-9]' | xargs -r rm -rf
 
