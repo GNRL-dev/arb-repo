@@ -57,7 +57,7 @@ subprojects {
 
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
-        jvmTarget = "1.4.31"
+        jvmTarget = "1.8"
         freeCompilerArgs = listOf(
             "-Xno-call-assertions",
             "-Xno-param-assertions",
