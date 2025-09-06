@@ -14,20 +14,20 @@ cloudstream {
   //  id = "faselhd.provider"
 }
 
-/*   android {
+  android {
     namespace = "com.faselhd"
-    compileSdk = 35
+    compileSdk = 31
 
     defaultConfig {
         minSdk = 21
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_1.8
+        targetCompatibility = JavaVersion.VERSION_1.8
     }
 }
-
+/*
 dependencies {
     implementation("com.github.recloudstream.cloudstream:library:v4.5.2")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
