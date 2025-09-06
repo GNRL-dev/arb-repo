@@ -55,21 +55,9 @@ subprojects {
         }
     }
 
-    /* ✅ Kotlin 2.0+ compilerOptions DSL
-    tasks.withType<KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1.8)
-            freeCompilerArgs.addAll(
-                "-Xno-call-assertions",
-                "-Xno-param-assertions",
-                "-Xno-receiver-assertions",
-                "-Xskip-metadata-version-check"
-            )
-        }
-    }*/
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "1.4.31"
         freeCompilerArgs = listOf(
             "-Xno-call-assertions",
             "-Xno-param-assertions",
