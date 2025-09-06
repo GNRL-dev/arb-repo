@@ -11,9 +11,9 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.7.3")
+        classpath("com.android.tools.build:gradle:7.0.4")
         classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21") // Kotlin 2.2.10
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.10") // Kotlin 2.2.10
     }
 }
 
@@ -42,11 +42,11 @@ subprojects {
     }
 
     android {
-        compileSdkVersion(35)
+        compileSdkVersion(30)
 
         defaultConfig {
             minSdk = 21
-            targetSdk = 35
+            targetSdk = 30
         }
 
         compileOptions {
