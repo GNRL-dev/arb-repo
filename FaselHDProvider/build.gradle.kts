@@ -2,7 +2,7 @@
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("com.lagradost.cloudstream3.gradle")
-}*/
+}
 version = 1
 
 cloudstream {
@@ -36,4 +36,4 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.+")
     implementation("org.mozilla:rhino:1.7.14")
     apk("com.lagradost:cloudstream3:pre-release")
-}*/
+}
