@@ -42,10 +42,10 @@ jobs:
       - name: Setup Android SDK (AGP 7.0.4 compatible)
         uses: android-actions/setup-android@v3
 
-      - name: Remove invalid SDK directories (like android-33x, android-34x)
+   /*   - name: Remove invalid SDK directories (like android-33x, android-34x)
         run: |
           echo "Removing invalid SDK platform folders..."
-          find $ANDROID_SDK_ROOT/platforms -maxdepth 1 -type d -name 'android-*' | grep -E 'android-[0-9]+[^0-9]' | xargs -r rm -rf
+          find $ANDROID_SDK_ROOT/platforms -maxdepth 1 -type d -name 'android-*' | grep -E 'android-[0-9]+[^0-9]' | xargs -r rm -rf*/
 
       - name: Install SDK platform and build tools
         run: sdkmanager "platforms;android-33" "build-tools;33.0.2"
