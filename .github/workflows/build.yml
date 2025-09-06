@@ -33,11 +33,11 @@ jobs:
       - name: Clean old builds
         run: rm -f $GITHUB_WORKSPACE/builds/*.cs3 || true
 
-      - name: Setup JDK 11 (✅ Compatible with Gradle 7.0.4 + AGP 7.0.4)
+      - name: Setup JDK 17 (required for latest Android SDK tools)
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: 11
+          java-version: 17
 
       - name: Setup Android SDK (AGP 7.0.4 compatible)
         uses: android-actions/setup-android@v3
@@ -65,4 +65,4 @@ jobs:
           git config --local user.name "GitHub Actions"
           git add .
           git commit --amend -m "Build $GITHUB_SHA" || exit 0
-          git push --force
+          git push --force-with-lease
