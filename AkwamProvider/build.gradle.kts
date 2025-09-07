@@ -7,7 +7,7 @@ version = 1
 
 cloudstream {
     language = "ar"
-    author = "Gnrl"
+   // author = "Gnrl"
     description = "Arabic streaming plugin for Cloudstream"
     status = 1
     tvTypes = listOf("Movie", "TvSeries")
