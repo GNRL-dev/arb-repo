@@ -43,7 +43,7 @@ class FaselHD : MainAPI() {
     }
 
   //  override suspend fun getMainPage(): HomePageResponse
-    override suspend fun getMainPage(request: MainPageRequest): HomePageResponse {
+   /* override suspend fun getMainPage(request: MainPageRequest): HomePageResponse {
         val doc = app.get(mainUrl).document
         val homeLists = ArrayList<HomePageList>()
 
@@ -53,7 +53,7 @@ class FaselHD : MainAPI() {
         homeLists.add(HomePageList("أحدث الإضافات", items))
 
         return HomePageResponse(homeLists)
-    }
+    }*/
 /*    override suspend fun getMainPage(
     page: Int,
     request: MainPageRequest
@@ -70,7 +70,7 @@ class FaselHD : MainAPI() {
 }
 */
 
-/*override suspend fun getMainPage(
+ override suspend fun getMainPage(
     page: Int,
     request: MainPageRequest
 ): HomePageResponse {
@@ -93,7 +93,7 @@ class FaselHD : MainAPI() {
 
 
     return newHomePageResponse(homeLists)
-}*/
+}
 
     override suspend fun load(url: String): LoadResponse {
         var doc = app.get(url).document
