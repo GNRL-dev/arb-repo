@@ -90,7 +90,7 @@ override suspend fun getMainPage(
 
     homeLists.add(HomePageList(request.name ?: "أحدث الإضافات", items))
 
-    return HomePageResponse(homeLists)
+    return newHomePageResponse(homeLists)
 }
 
     override suspend fun load(url: String): LoadResponse {
