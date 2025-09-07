@@ -33,7 +33,7 @@ cloudstream {
     apk("com.lagradost:cloudstream3:pre-release")
 
     implementation("com.github.recloudstream.cloudstream:library:v4.5.2")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.10")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
     implementation("com.github.Blatzar:NiceHttp:0.4.13")
     implementation("org.jsoup:jsoup:1.21.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.20.0")
