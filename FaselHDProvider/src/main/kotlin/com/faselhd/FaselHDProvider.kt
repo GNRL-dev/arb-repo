@@ -70,7 +70,7 @@ class FaselHD : MainAPI() {
 }
 */
 
-override suspend fun getMainPage(
+/*override suspend fun getMainPage(
     page: Int,
     request: MainPageRequest
 ): HomePageResponse {
@@ -93,7 +93,7 @@ override suspend fun getMainPage(
 
 
     return newHomePageResponse(homeLists)
-}
+}*/
 
     override suspend fun load(url: String): LoadResponse {
         var doc = app.get(url).document
