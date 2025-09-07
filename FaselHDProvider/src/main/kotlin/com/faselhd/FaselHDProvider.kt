@@ -14,7 +14,7 @@ import com.lagradost.cloudstream3.TvType
 class FaselHD : MainAPI() {
     override var lang = "ar"
     override var mainUrl = "https://www.faselhds.life"
-    private val alternativeUrl = "https://www.faselhds.life"
+  //  private val alternativeUrl = "https://www.faselhds.life"
     override var name = "FaselHD"
     override val usesWebView = false
     override val hasMainPage = true
