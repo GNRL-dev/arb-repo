@@ -13,7 +13,7 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle:8.7.3")
         classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10") // Kotlin 2.2.10
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22") // Kotlin 2.2.10
     }
 }
 
@@ -71,7 +71,7 @@ subprojects {
     dependencies {
     add("apk", "com.lagradost:cloudstream3:pre-release")
     add("implementation", "com.github.recloudstream.cloudstream:library:v4.5.2")
-    add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
+    add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:1.8.22")
     add("implementation", "com.github.Blatzar:NiceHttp:0.4.13")
     add("implementation", "org.jsoup:jsoup:1.21.2")
     add("implementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.20.0")
