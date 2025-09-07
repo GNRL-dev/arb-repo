@@ -88,7 +88,9 @@ override suspend fun getMainPage(
     val section = doc.select("div#postList")
     val items = section.select("div.postDiv").mapNotNull { it.toSearchResponse() }
 
-    homeLists.add(HomePageList(request.name ?: "أحدث الإضافات", items))
+    //homeLists.add(HomePageList(request.name ?: "أحدث الإضافات", items))
+    homeLists.add(HomePageList(request.name, items))
+
 
     return newHomePageResponse(homeLists)
 }
