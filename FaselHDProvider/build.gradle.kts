@@ -12,6 +12,7 @@ cloudstream {
     status = 1
     tvTypes = listOf("Movie", "TvSeries")
     //id = ("faselhd.provider")
+    apiVersion = 4
 }
 
    android {
