@@ -1,2 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="com.akwam"/>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- You can add your activities, services, receivers, etc. here -->
+    </application>
+
+</manifest>
