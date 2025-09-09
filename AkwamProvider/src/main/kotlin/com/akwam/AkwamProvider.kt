@@ -148,7 +148,7 @@ class Akwam : MainAPI() {
         }
     }
 
-    /*
+    
     // Optional loadLinks function - commented out as requested
     override suspend fun loadLinks(
         data: String,
@@ -190,7 +190,7 @@ class Akwam : MainAPI() {
         }
         return true
     }
-    */
+    
 
     private fun getQualityFromId(id: Int?): Qualities {
         return when (id) {
