@@ -2,7 +2,10 @@ package com.akwam
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
-import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.newMovieSearchResponse
+import com.lagradost.cloudstream3.newHomePageResponse
+import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import org.jsoup.nodes.Element
 
 class Akwam : MainAPI() {
@@ -17,16 +20,11 @@ class Akwam : MainAPI() {
         val url = select("a.box").attr("href") ?: return null
         if (url.contains("/games/") || url.contains("/programs/")) return null
         val poster = select("picture > img")
-        val title = poster.attr("alt")
+        val title = poster.attr("alt") ?: return null
         val posterUrl = poster.attr("data-src")
         val year = select(".badge-secondary").text().toIntOrNull()
 
-        return newMovieSearchResponse(
-            title,
-            url,
-            TvType.TvSeries,
-            fix = false,
-        ) {
+        return newMovieSearchResponse(title, url, TvType.TvSeries) {
             this.posterUrl = posterUrl
             this.year = year
         }
@@ -95,26 +93,23 @@ class Akwam : MainAPI() {
         }
 
         val actors = doc.select("div.widget-body > div > div.entry-box > a").mapNotNull {
-            val name = it.selectFirst("div > .entry-title")?.text() ?: return@mapNotNull null
+            val name = it?.selectFirst("div > .entry-title")?.text() ?: return@mapNotNull null
             val image = it.selectFirst("div > img")?.attr("src") ?: return@mapNotNull null
             Actor(name, image)
         }
 
-        val recommendations = doc.select("div > div.widget-body > div.row > div > div.entry-box").mapNotNull {
-            val recTitle = it.selectFirst("div.entry-body > .entry-title > .text-white") ?: return@mapNotNull null
-            val href = recTitle.attr("href") ?: return@mapNotNull null
-            val name = recTitle.text() ?: return@mapNotNull null
-            val poster = it.selectFirst(".entry-image > a > picture > img")?.attr("data-src") ?: return@mapNotNull null
-
-            newMovieSearchResponse(
-                name,
-                href,
-                TvType.Movie,
-                fix = true,
-            ) {
-                this.posterUrl = fixUrl(poster)
+        val recommendations =
+            doc.select("div > div.widget-body > div.row > div > div.entry-box").mapNotNull {
+                val recTitle = it?.selectFirst("div.entry-body > .entry-title > .text-white")
+                    ?: return@mapNotNull null
+                val href = recTitle.attr("href") ?: return@mapNotNull null
+                val name = recTitle.text() ?: return@mapNotNull null
+                val poster = it.selectFirst(".entry-image > a > picture > img")?.attr("data-src")
+                    ?: return@mapNotNull null
+                newMovieSearchResponse(name, href, TvType.Movie) {
+                    this.posterUrl = fixUrl(poster)
+                }
             }
-        }
 
         return if (isMovie) {
             newMovieLoadResponse(
@@ -153,16 +148,8 @@ class Akwam : MainAPI() {
         }
     }
 
-    private fun getQualityFromId(id: Int?): Qualities {
-        return when (id) {
-            2 -> Qualities.P360
-            3 -> Qualities.P480
-            4 -> Qualities.P720
-            5 -> Qualities.P1080
-            else -> Qualities.Unknown
-        }
-    }
-
+    /*
+    // Optional loadLinks function - commented out as requested
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -171,218 +158,47 @@ class Akwam : MainAPI() {
     ): Boolean {
         val doc = app.get(data).document
 
-        val links = doc.select("div.tab-content.quality").map { element ->
+        val links = doc.select("div.tab-content.quality").flatMap { element ->
             val quality = getQualityFromId(element.attr("id").getIntFromText())
             element.select(".col-lg-6 > a:contains(تحميل)").map { linkElement ->
-                if (linkElement.attr("href").contains("/download/")) {
-                    Pair(
-                        linkElement.attr("href"),
-                        quality,
-                    )
+                val href = linkElement.attr("href")
+                if (href.contains("/download/")) {
+                    href to quality
                 } else {
-                    val url = "$mainUrl/download${
-                        linkElement.attr("href").split("/link")[1]
-                    }${data.split("/movie|/episode|/shows|/show/episode".toRegex())[1]}"
-                    Pair(
-                        url,
-                        quality,
-                    )
+                    val suffix = data.split("/movie|/episode|/shows|/show/episode".toRegex())[1]
+                    "$mainUrl/download${href.split("/link")[1]}$suffix" to quality
                 }
             }
-        }.flatten()
+        }
 
-        links.forEach {
-            val linkDoc = app.get(it.first).document
+        links.forEach { (linkUrl, quality) ->
+            val linkDoc = app.get(linkUrl).document
             val button = linkDoc.select("div.btn-loader > a")
-            val url = button.attr("href")
+            val finalUrl = button.attr("href")
 
             callback.invoke(
                 newExtractorLink(
-                    this.name,
-                    this.name,
-                    url,
-                    this.mainUrl,
-                    it.second.value,
-                    null,
-                    false
-                ) {
-                    // No additional configuration required here
-                }
-            )
-        }
-        return true
-    }
-}        "$mainUrl/series?page=" to "Series",
-        "$mainUrl/shows?page=" to "Shows"
-    )
-
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val doc = app.get(request.data + page).document
-        val list = doc.select("div.col-lg-auto.col-md-4.col-6.mb-12").mapNotNull {
-            it.toSearchResponse()
-        }
-        return newHomePageResponse(request.name, list)
-    }
-
-    override suspend fun search(query: String): List<SearchResponse> {
-        val url = "$mainUrl/search?q=$query"
-        val doc = app.get(url).document
-        return doc.select("div.col-lg-auto").mapNotNull {
-            it.toSearchResponse()
-        }
-    }
-
-    private fun String.getIntFromText(): Int? {
-        return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
-    }
-
-    private fun Element.toEpisode(): Episode {
-        val a = select("a.text-white")
-        val url = a.attr("href")
-        val title = a.text()
-        val thumbUrl = select("picture > img").attr("src")
-        val date = select("p.entry-date").text()
-        return newEpisode(url) {
-            name = title
-            episode = title.getIntFromText()
-            posterUrl = thumbUrl
-            addDate(date)
-        }
-    }
-
-    override suspend fun load(url: String): LoadResponse {
-        val doc = app.get(url).document
-        val isMovie = doc.select("#downloads > h2 > span").isNotEmpty()
-        val title = doc.select("h1.entry-title").text()
-        val posterUrl = doc.select("picture > img").attr("src")
-
-        val year = doc.select("div.font-size-16.text-white.mt-2").firstOrNull {
-            it.text().contains("السنة")
-        }?.text()?.getIntFromText()
-
-        val duration = doc.select("div.font-size-16.text-white.mt-2").firstOrNull {
-            it.text().contains("مدة الفيلم")
-        }?.text()?.getIntFromText()
-
-        val synopsis = doc.select("div.widget-body p:first-child").text()
-
-        val rating = doc.select("span.mx-2").text().split("/").lastOrNull()?.toRatingInt()
-
-        val tags = doc.select("div.font-size-16.d-flex.align-items-center.mt-3 > a").map {
-            it.text()
-        }
-
-        val actors = doc.select("div.widget-body > div > div.entry-box > a").mapNotNull {
-            val name = it.selectFirst("div > .entry-title")?.text() ?: return@mapNotNull null
-            val image = it.selectFirst("div > img")?.attr("src") ?: return@mapNotNull null
-            Actor(name, image)
-        }
-
-        val recommendations = doc.select("div > div.widget-body > div.row > div > div.entry-box").mapNotNull {
-            val recTitle = it.selectFirst("div.entry-body > .entry-title > .text-white") ?: return@mapNotNull null
-            val href = recTitle.attr("href") ?: return@mapNotNull null
-            val name = recTitle.text() ?: return@mapNotNull null
-            val poster = it.selectFirst(".entry-image > a > picture > img")?.attr("data-src") ?: return@mapNotNull null
-
-            newMovieSearchResponse(
-                name,
-                href,
-                this.name,
-                TvType.Movie,
-                fixUrl(poster)
-            )
-        }
-
-        return if (isMovie) {
-            newMovieLoadResponse(
-                title,
-                url,
-                TvType.Movie,
-                url
-            ) {
-                this.posterUrl = posterUrl
-                this.year = year
-                this.plot = synopsis
-                this.rating = rating
-                this.tags = tags
-                this.duration = duration
-                this.recommendations = recommendations
-                addActors(actors)
-            }
-        } else {
-            val episodes = doc.select("div.bg-primary2.p-4.col-lg-4.col-md-6.col-12").map {
-                it.toEpisode()
-            }.let {
-                val isReversed = (it.lastOrNull()?.episode ?: 1) < (it.firstOrNull()?.episode ?: 0)
-                if (isReversed) it.reversed() else it
-            }
-
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.duration = duration
-                this.posterUrl = posterUrl
-                this.tags = tags.filterNotNull()
-                this.rating = rating
-                this.year = year
-                this.plot = synopsis
-                this.recommendations = recommendations
-                addActors(actors)
-            }
-        }
-    }
-
-    private fun getQualityFromId(id: Int?): Qualities {
-        return when (id) {
-            2 -> Qualities.P360
-            3 -> Qualities.P480
-            4 -> Qualities.P720
-            5 -> Qualities.P1080
-            else -> Qualities.Unknown
-        }
-    }
-
-    override suspend fun loadLinks(
-        data: String,
-        isCasting: Boolean,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ): Boolean {
-        val doc = app.get(data).document
-
-        val links = doc.select("div.tab-content.quality").map { element ->
-            val quality = getQualityFromId(element.attr("id").getIntFromText())
-            element.select(".col-lg-6 > a:contains(تحميل)").map { linkElement ->
-                if (linkElement.attr("href").contains("/download/")) {
-                    Pair(
-                        linkElement.attr("href"),
-                        quality,
-                    )
-                } else {
-                    val url = "$mainUrl/download${
-                        linkElement.attr("href").split("/link")[1]
-                    }${data.split("/movie|/episode|/shows|/show/episode".toRegex())[1]}"
-                    Pair(
-                        url,
-                        quality,
-                    )
-                }
-            }
-        }.flatten()
-
-        links.forEach {
-            val linkDoc = app.get(it.first).document
-            val button = linkDoc.select("div.btn-loader > a")
-            val url = button.attr("href")
-
-            callback.invoke(
-                newExtractorLink(
-                    this.name,
-                    this.name,
-                    url,
-                    this.mainUrl,
-                    it.second.value
+                    source = this.name,
+                    name = this.name,
+                    url = finalUrl,
+                    referer = this.mainUrl,
+                    quality = quality.value,
+                    type = null,
+                    isM3u8 = false
                 )
             )
         }
         return true
+    }
+    */
+
+    private fun getQualityFromId(id: Int?): Qualities {
+        return when (id) {
+            2 -> Qualities.P360
+            3 -> Qualities.P480
+            4 -> Qualities.P720
+            5 -> Qualities.P1080
+            else -> Qualities.Unknown
+        }
     }
 }
