@@ -150,8 +150,48 @@ class Akwam : MainAPI() {
             }
         }
     }
+override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    val doc = app.get(data).document
 
-    
+    val links = doc.select("div.tab-content.quality").flatMap { element ->
+        val quality = getQualityFromId(element.attr("id").getIntFromText())
+        element.select(".col-lg-6 > a:contains(تحميل)").map { linkElement ->
+            val href = linkElement.attr("href")
+            if (href.contains("/download/")) {
+                href to quality
+            } else {
+                val suffix = data.split("/movie|/episode|/shows|/show/episode".toRegex())[1]
+                "$mainUrl/download${href.split("/link")[1]}$suffix" to quality
+            }
+        }
+    }
+
+    links.forEach { (linkUrl, quality) ->
+        val linkDoc = app.get(linkUrl).document
+        val button = linkDoc.select("div.btn-loader > a")
+        val finalUrl = button.attr("href")
+
+        callback.invoke(
+            newExtractorLink(
+                this.name,
+                this.name,
+                finalUrl,
+                this.mainUrl,
+                quality.value,
+                false
+            )
+        )
+    }
+
+    return true
+}
+
+    /*
     // Optional loadLinks function - commented out as requested
     override suspend fun loadLinks(
         data: String,
@@ -192,7 +232,7 @@ class Akwam : MainAPI() {
             )
         }
        // return true
-    }
+    }*/
     
 
     private fun getQualityFromId(id: Int?): Qualities {
