@@ -6,6 +6,9 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
+import com.lagradost.cloudstream3.extractors.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 
 class Akwam : MainAPI() {
@@ -155,7 +158,7 @@ class Akwam : MainAPI() {
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean {
+    ) {
         val doc = app.get(data).document
 
         val links = doc.select("div.tab-content.quality").flatMap { element ->
@@ -188,7 +191,7 @@ class Akwam : MainAPI() {
                 )
             )
         }
-        return true
+       // return true
     }
     
 
