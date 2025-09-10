@@ -187,7 +187,7 @@ class Akwam : MainAPI() {
             ) {
                 this.referer = this@Akwam.mainUrl // 'this@Akwam' to reference outer class
                 this.quality = quality.value
-                this.isM3u8 = true // or false based on actual stream type
+              //  this.isM3u8 = true // or false based on actual stream type
             }
         )
     }
