@@ -7,6 +7,7 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 //import com.lagradost.cloudstream3.extractors.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
@@ -182,8 +183,9 @@ class Akwam : MainAPI() {
                 name = this.name,
                 url = finalUrl,
                 type = ExtractorLinkType.M3U8, // Or MP4 if applicable
-                referer = this.mainUrl
+                //referer = this.mainUrl
             ) {
+                this.referer = this@Akwam.mainUrl // 'this@Akwam' to reference outer class
                 this.quality = quality.value
                 this.isM3u8 = true // or false based on actual stream type
             }
