@@ -182,7 +182,7 @@ class Akwam : MainAPI() {
                 source = this.name,
                 name = this.name,
                 url = finalUrl,
-                type = ExtractorLinkType.MP4, // Or MP4 if applicable
+              //  type = ExtractorLinkType.MP4, // Or MP4 if applicable
                 //referer = this.mainUrl
             ) {
                 this.referer = this@Akwam.mainUrl // 'this@Akwam' to reference outer class
