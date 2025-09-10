@@ -6,7 +6,7 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
-import com.lagradost.cloudstream3.extractors.ExtractorLink
+//import com.lagradost.cloudstream3.extractors.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
@@ -150,7 +150,50 @@ class Akwam : MainAPI() {
             }
         }
     }
-override suspend fun loadLinks(
+    override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    val doc = app.get(data).document
+
+    val links = doc.select("div.tab-content.quality").flatMap { element ->
+        val quality = getQualityFromId(element.attr("id").getIntFromText())
+        element.select(".col-lg-6 > a:contains(تحميل)").map { linkElement ->
+            val href = linkElement.attr("href")
+            if (href.contains("/download/")) {
+                href to quality
+            } else {
+                val suffix = data.split("/movie|/episode|/shows|/show/episode".toRegex())[1]
+                "$mainUrl/download${href.split("/link")[1]}$suffix" to quality
+            }
+        }
+    }
+
+    links.forEach { (linkUrl, quality) ->
+        val linkDoc = app.get(linkUrl).document
+        val button = linkDoc.select("div.btn-loader > a")
+        val finalUrl = button.attr("href")
+
+        callback.invoke(
+            newExtractorLink(
+                source = this.name,
+                name = this.name,
+                url = finalUrl,
+                type = ExtractorLinkType.M3U8, // Or MP4 if applicable
+                referer = this.mainUrl
+            ) {
+                this.quality = quality.value
+                this.isM3u8 = true // or false based on actual stream type
+            }
+        )
+    }
+
+    return true
+}
+
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -190,7 +233,7 @@ override suspend fun loadLinks(
 
     return true
 }
-
+*/
     /*
     // Optional loadLinks function - commented out as requested
     override suspend fun loadLinks(
