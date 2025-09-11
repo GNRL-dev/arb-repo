@@ -48,13 +48,21 @@ class Akwam : MainAPI() {
         return newHomePageResponse(request.name, list)
     }
 
-    override suspend fun search(query: String): List<SearchResponse> {
+   /* override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/search?q=$query"
         val doc = app.get(url).document
         return doc.select("div.col-lg-auto").mapNotNull {
             it.toSearchResponse()
         }
+    }*/
+    override suspend fun search(query: String, page: Int): List<SearchResponse> {
+    val url = "$mainUrl/search?q=${query.encodeURL()}&page=$page"
+    val doc = app.get(url).document
+    return doc.select("div.col-lg-auto").mapNotNull {
+        it.toSearchResponse()
     }
+}
+
 
     private fun String.getIntFromText(): Int? {
         return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
