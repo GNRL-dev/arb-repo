@@ -11,6 +11,8 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
+import com.lagradost.cloudstream3.utils.encodeURL
+
 
 class Akwam : MainAPI() {
     override var lang = "ar"
@@ -55,13 +57,16 @@ class Akwam : MainAPI() {
             it.toSearchResponse()
         }
     }*/
-    override suspend fun search(query: String, page: Int): List<SearchResponse> {
+    override suspend fun search(query: String, page: Int): SearchResponseList? {
     val url = "$mainUrl/search?q=${query.encodeURL()}&page=$page"
     val doc = app.get(url).document
-    return doc.select("div.col-lg-auto").mapNotNull {
+
+    val results = doc.select("div.col-lg-auto").mapNotNull {
         it.toSearchResponse()
     }
-}
+
+    return SearchResponseList(results)
+    }
 
 
     private fun String.getIntFromText(): Int? {
