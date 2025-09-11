@@ -6,6 +6,10 @@ import com.lagradost.cloudstream3.utils.loadExtractor
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.nicehttp.Requests
+import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.newEpisode
+
 
 class Animeiat : MainAPI() {
     override var lang = "ar"
@@ -61,8 +65,7 @@ class Animeiat : MainAPI() {
                         request.name.replace(" (H)", ""),
                         list,
                         request.name.contains("(H)")
-                    )
-                )
+      ne           )
             )
         } else {
             newHomePageResponse(request.name, list)
@@ -136,7 +139,7 @@ class Animeiat : MainAPI() {
         for (pageNumber in 1..lastPage) {
             val pageData = parseJson<Episodes>(loadSession.get("$url/episodes?page=$pageNumber").text)
             pageData.data.map {
-                episodes.add(
+            /*    episodes.add(
                     newEpisode(
                         data = "$pageUrl/watch/" + json.data?.slug,
                         name = it.title,
@@ -144,7 +147,15 @@ class Animeiat : MainAPI() {
                         episode = it.number,
                         posterUrl = "https://api.animeiat.co/storage/" + it.posterPath
                     )
-                )
+                )*/
+                episodes.add(
+    newEpisode(
+        url = "$pageUrl/watch/" + json.data?.slug,
+        episode = it.number,
+        name = it.title,
+        posterUrl = "https://api.animeiat.co/storage/" + it.posterPath
+    )
+)
             }
         }
 
