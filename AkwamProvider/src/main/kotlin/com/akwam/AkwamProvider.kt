@@ -11,7 +11,9 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
-import com.lagradost.cloudstream3.utils.encodeURL
+//import com.lagradost.cloudstream3.utils.encodeURL
+import com.lagradost.cloudstream3.utils.AppUtils.encodeURL
+
 
 
 class Akwam : MainAPI() {
