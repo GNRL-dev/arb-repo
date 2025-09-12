@@ -1,0 +1,59 @@
+[
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 14534,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "AkwamProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/AkwamProvider.cs3",
+        "name": "AkwamProvider"
+    },
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 11657,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "AnimeiatProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/AnimeiatProvider.cs3",
+        "name": "AnimeiatProvider"
+    },
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 11249,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "FaselHDProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/FaselHDProvider.cs3",
+        "name": "FaselHDProvider"
+    }
+]
