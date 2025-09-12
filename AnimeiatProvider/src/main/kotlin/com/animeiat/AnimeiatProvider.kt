@@ -57,18 +57,15 @@ class Animeiat : MainAPI() {
             }
         }
         return if (request.name.contains("(H)")) {
-            HomePageResponse(
-                listOf(
-                    HomePageList(
-                        request.name.replace(" (H)", ""),
-                        list,
-                        true
-                    )
-                )
-            )
-        } else {
-            newHomePageResponse(request.name, list)
-        }
+    newHomePageResponse(
+        request.name.replace(" (H)", ""),
+        list,
+        hasNext = false
+    )
+} else {
+    newHomePageResponse(request.name, list)
+}
+
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
