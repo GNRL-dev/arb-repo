@@ -81,7 +81,7 @@ class Akwam : MainAPI() {
         it.toSearchResponse()
     }
 
-    return SearchResponseList(results)
+    return newSearchResponseList(results)
 }
 
 
@@ -154,7 +154,7 @@ class Akwam : MainAPI() {
                 this.posterUrl = posterUrl
                 this.year = year
                 this.plot = synopsis
-                this.rating = rating
+                this.score = rating
                 this.tags = tags
                 this.duration = duration
                 this.recommendations = recommendations
