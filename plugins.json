@@ -1,0 +1,78 @@
+[
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 14775,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "AkwamProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/AkwamProvider.cs3",
+        "name": "AkwamProvider"
+    },
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 13969,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "ArabSeedProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/ArabSeedProvider.cs3",
+        "name": "ArabSeedProvider"
+    },
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 16064,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "CimaNowProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/CimaNowProvider.cs3",
+        "name": "CimaNowProvider"
+    },
+    {
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/GNRL-dev/arb-repo",
+        "fileSize": 17644,
+        "status": 1,
+        "language": "ar",
+        "authors": [
+            
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "FaselHDProvider",
+        "description": "Arabic streaming plugin for Cloudstream",
+        "url": "https://raw.githubusercontent.com/GNRL-dev/arb-repo/builds/FaselHDProvider.cs3",
+        "name": "FaselHDProvider"
+    }
+]
