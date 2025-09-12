@@ -119,7 +119,7 @@ class Akwam : MainAPI() {
 
         val synopsis = doc.select("div.widget-body p:first-child").text()
 
-        val rating = doc.select("span.mx-2").text().split("/").lastOrNull()?.toRatingInt()
+//        val rating = doc.select("span.mx-2").text().split("/").lastOrNull()?.toRatingInt()
 
         val tags = doc.select("div.font-size-16.d-flex.align-items-center.mt-3 > a").map {
             it.text()
@@ -155,7 +155,7 @@ class Akwam : MainAPI() {
                 this.year = year
                 this.plot = synopsis
               //  this.score = rating
-                this.score = rating?.let { Score.fromRating(it) }
+             //   this.score = rating?.let { Score.fromRating(it) }
              //   this.score = rating?.let { Score(it) }
                 this.tags = tags
                 this.duration = duration
@@ -175,7 +175,7 @@ class Akwam : MainAPI() {
                 this.posterUrl = posterUrl
                 this.tags = tags.filterNotNull()
                // this.rating = rating
-               this.score = rating?.let { Score.fromRating(it) }
+              // this.score = rating?.let { Score.fromRating(it) }
               //  this.score = rating?.let { Score(it) }
                 this.year = year
                 this.plot = synopsis
