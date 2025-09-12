@@ -154,7 +154,8 @@ class Akwam : MainAPI() {
                 this.posterUrl = posterUrl
                 this.year = year
                 this.plot = synopsis
-                this.score = rating
+              //  this.score = rating
+                this.score = rating?.let { Score(it) }
                 this.tags = tags
                 this.duration = duration
                 this.recommendations = recommendations
@@ -172,7 +173,8 @@ class Akwam : MainAPI() {
                 this.duration = duration
                 this.posterUrl = posterUrl
                 this.tags = tags.filterNotNull()
-                this.rating = rating
+               // this.rating = rating
+                this.score = rating?.let { Score(it) }
                 this.year = year
                 this.plot = synopsis
                 this.recommendations = recommendations
