@@ -110,14 +110,13 @@ class Animeiat : MainAPI() {
     // =======================
     // Load Anime Details
     // =======================
-override suspend fun load(url: String): LoadResponse {
+
+     override suspend fun load(url: String): LoadResponse {
     val doc = app.get(url).document
 
     val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
     val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
     val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-        ?: doc.selectFirst("img")?.attr("data-src")
-        ?: doc.selectFirst("img")?.attr("src")
     val description = doc.selectFirst("p.text-justify")?.text()?.trim()
     val genres = doc.select("span.v-chip__content span").map { it.text() }
     val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
@@ -125,8 +124,9 @@ override suspend fun load(url: String): LoadResponse {
         if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
     val episodes = mutableListOf<Episode>()
-    var page = 1
 
+    // 🔑 Loop through episode pages
+    var page = 1
     while (true) {
         val pageUrl = if (url.contains("?")) "$url&page=$page" else "$url?page=$page"
         val pageDoc = app.get(pageUrl).document
@@ -134,30 +134,21 @@ override suspend fun load(url: String): LoadResponse {
         val epCards = pageDoc.select("a.card-link")
         if (epCards.isEmpty()) break
 
-        epCards.forEach { ep ->
+        epCards.forEachIndexed { idx, ep ->
             val href = ep.attr("href")
-
-            val epName = ep.selectFirst(".episode-title")?.text()?.trim()
-                ?: ep.text()?.trim()
-                ?: "Episode ${(episodes.size) + 1}"
-
-            val epPosterStyle = ep.selectFirst(".v-image__image--cover")?.attr("style")
-            val epPoster = epPosterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-                ?: ep.selectFirst("img")?.attr("data-src")
-                ?: ep.selectFirst("img")?.attr("src")
-                ?: poster
-
             episodes.add(
                 newEpisode(fixUrl(href)) {
-                    name = epName
+                    name = ep.text().ifBlank { "Episode ${(episodes.size) + 1}" }
                     episode = (episodes.size) + 1
-                    posterUrl = epPoster
+                    posterUrl = poster
                 }
             )
         }
 
+        // Check if there is a "Next page" button
         val hasNext = pageDoc.select("button[aria-label=Next page]").isNotEmpty()
         if (!hasNext) break
+
         page++
     }
 
@@ -169,8 +160,6 @@ override suspend fun load(url: String): LoadResponse {
         addEpisodes(DubStatus.Subbed, episodes)
     }
 }
-
-
 
     // =======================
     // Extract Links
