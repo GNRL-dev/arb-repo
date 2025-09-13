@@ -200,16 +200,17 @@ class Animeiat : MainAPI() {
                     iframeDoc.select("video source").forEach { src ->
                         val videoUrl = src.attr("src")
                         val quality = src.attr("size").toIntOrNull() ?: Qualities.Unknown.value
-                        callback.invoke(
-                            ExtractorLink(
-                                source = name,
-                                name = "${quality}p",
-                                url = videoUrl,
-                                referer = mainUrl,
-                                quality = quality,
-                                isM3u8 = videoUrl.endsWith(".m3u8")
-                            )
-                        )
+                       callback.invoke(
+                          newExtractorLink(
+                          source = name,
+                          name = "${quality}p",
+                           url = videoUrl,
+                      //    type = if (videoUrl.endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.MP4
+                         ) {
+                          this.quality = quality
+                           this.referer = mainUrl
+                     }
+            )
                     }
                     if (iframeDoc.select("video source").isNotEmpty()) success = true
                 }
