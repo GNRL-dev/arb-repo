@@ -220,4 +220,4 @@ class Animeiat : MainAPI() {
 
     return success
 }
-
+}
