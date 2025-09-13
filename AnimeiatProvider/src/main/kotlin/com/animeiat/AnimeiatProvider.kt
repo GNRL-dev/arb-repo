@@ -185,7 +185,7 @@ class Animeiat : MainAPI() {
                     source = name,
                     name = "${qualityInt}p",
                     url = videoUrl,
-                    type = if (videoUrl.endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.MP4
+          //          type = if (videoUrl.endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.MP4
                 ) {
                     this.quality = qualityInt
                     this.referer = mainUrl
