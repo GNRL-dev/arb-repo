@@ -82,9 +82,31 @@ class Animeiat : MainAPI() {
     // Search
     // =======================
     override suspend fun search(query: String): List<SearchResponse> {
-        val doc = app.get("$mainUrl/anime?q=$query").document
-        return doc.select("div.v-card.v-sheet").mapNotNull { toSearchResult(it) }
+    val encoded = try {
+        java.net.URLEncoder.encode(query, "utf-8")
+    } catch (e: Exception) {
+        query
     }
+
+    val searchUrl = "$mainUrl/search?q=$encoded"
+
+    val doc = app.get(searchUrl).document
+
+    // The search results page has items that are simple text entries in a list
+    // We'll parse link + title + optionally type (movie/series)
+    val results = doc.select("div.row a, div.some-search-container a").mapNotNull { link ->
+        val href = link.attr("href").ifEmpty { return@mapNotNull null }
+        val title = link.selectFirst("h3, span, .title")?.text()?.trim()
+            ?: link.text()?.trim()
+            ?: return@mapNotNull null
+        val poster = link.selectFirst("img")?.attr("src") // might be missing
+        newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+            this.posterUrl = poster
+        }
+    }
+
+    return results
+}
 
     // =======================
     // Load Anime Details
