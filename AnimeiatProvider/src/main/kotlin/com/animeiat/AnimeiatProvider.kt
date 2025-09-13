@@ -19,58 +19,55 @@ class Animeiat : MainAPI() {
     // =======================
     // Home Page
     // =======================
-  override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-    val url = if (request.data.contains("/anime")) {
-        // قائمة الأنمي → supports pagination
-        if (request.data.contains("?"))
-            "${request.data}&page=$page"
-        else
-            "${request.data}?page=$page"
-    } else {
-        // الرئيسية → no pagination
-        request.data
-    }
-
-    val doc = app.get(url).document
-    val list = mutableListOf<AnimeSearchResponse>()
-
-    if (request.data.contains("/anime")) {
-        // قائمة الأنمي
-        doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
-            toSearchResult(card)
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        val url = if (request.data.contains("/anime")) {
+            // قائمة الأنمي → supports pagination
+            if (request.data.contains("?"))
+                "${request.data}&page=$page"
+            else
+                "${request.data}?page=$page"
+        } else {
+            // الرئيسية → no pagination
+            request.data
         }
-    } else {
-        // الرئيسية
-        doc.select("div.row a").mapNotNullTo(list) { link ->
-            val href = link.attr("href") ?: return@mapNotNullTo null
-            val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
-            val poster = link.selectFirst("img")?.attr("data-src")
-                ?: link.selectFirst("img")?.attr("src")
 
-            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
-                this.posterUrl = poster
+        val doc = app.get(url).document
+        val list = mutableListOf<AnimeSearchResponse>()
+
+        if (request.data.contains("/anime")) {
+            // قائمة الأنمي
+            doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
+                toSearchResult(card)
+            }
+        } else {
+            // الرئيسية
+            doc.select("div.row a").mapNotNullTo(list) { link ->
+                val href = link.attr("href") ?: return@mapNotNullTo null
+                val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
+                val poster = link.extractPoster()
+
+                newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                    this.posterUrl = poster
+                }
             }
         }
+
+        // ✅ Pagination detection: Next page button
+        val hasNext = if (request.data.contains("/anime")) {
+            doc.select("button[aria-label=Next page]").isNotEmpty()
+        } else {
+            false
+        }
+
+        return newHomePageResponse(request.name, list, hasNext = hasNext)
     }
-
-    // ✅ Pagination detection: Next page button
-    val hasNext = if (request.data.contains("/anime")) {
-        doc.select("button[aria-label=Next page]").isNotEmpty()
-    } else {
-        false
-    }
-
-    return newHomePageResponse(request.name, list, hasNext = hasNext)
-}
-
 
     private fun toSearchResult(card: Element): AnimeSearchResponse? {
         val href = card.selectFirst("a")?.attr("href") ?: return null
         val title = card.selectFirst(".anime_name")?.text()?.trim()
             ?: card.selectFirst(".v-card__title")?.text()?.trim()
             ?: return null
-        val posterStyle = card.selectFirst(".v-image__image--cover")?.attr("style")
-        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+        val poster = card.extractPoster()
 
         return newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
             this.posterUrl = poster
@@ -81,85 +78,78 @@ class Animeiat : MainAPI() {
     // Search
     // =======================
     override suspend fun search(query: String): List<SearchResponse> {
-    val encoded = try {
-        java.net.URLEncoder.encode(query, "utf-8")
-    } catch (e: Exception) {
-        query
-    }
-
-    val searchUrl = "$mainUrl/search?q=$encoded"
-
-    val doc = app.get(searchUrl).document
-
-    // The search results page has items that are simple text entries in a list
-    // We'll parse link + title + optionally type (movie/series)
-    val results = doc.select("div.row a, div.some-search-container a").mapNotNull { link ->
-        val href = link.attr("href").ifEmpty { return@mapNotNull null }
-        val title = link.selectFirst("h3, span, .title")?.text()?.trim()
-            ?: link.text()?.trim()
-            ?: return@mapNotNull null
-        val poster = link.selectFirst("img")?.attr("src") // might be missing
-        newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
-            this.posterUrl = poster
+        val encoded = try {
+            java.net.URLEncoder.encode(query, "utf-8")
+        } catch (e: Exception) {
+            query
         }
-    }
 
-    return results
-}
+        val searchUrl = "$mainUrl/search?q=$encoded"
+        val doc = app.get(searchUrl).document
+
+        val results = doc.select("div.row a, div.some-search-container a").mapNotNull { link ->
+            val href = link.attr("href").ifEmpty { return@mapNotNull null }
+            val title = link.selectFirst("h3, span, .title")?.text()?.trim()
+                ?: link.text()?.trim()
+                ?: return@mapNotNull null
+            val poster = link.extractPoster()
+            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                this.posterUrl = poster
+            }
+        }
+
+        return results
+    }
 
     // =======================
     // Load Anime Details
     // =======================
-  override suspend fun load(url: String): LoadResponse {
-    val doc = app.get(url).document
+    override suspend fun load(url: String): LoadResponse {
+        val doc = app.get(url).document
 
-    val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
-    val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
-    val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-    val description = doc.selectFirst("p.text-justify")?.text()?.trim()
-    val genres = doc.select("span.v-chip__content span").map { it.text() }
-    val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
-    val showStatus =
-        if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
+        val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
+        val poster = doc.extractPoster(".v-image__image--cover")
+        val description = doc.selectFirst("p.text-justify")?.text()?.trim()
+        val genres = doc.select("span.v-chip__content span").map { it.text() }
+        val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
+        val showStatus =
+            if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
-    val episodes = mutableListOf<Episode>()
+        val episodes = mutableListOf<Episode>()
 
-    // 🔑 Loop through episode pages
-    var page = 1
-    while (true) {
-        val pageUrl = if (url.contains("?")) "$url&page=$page" else "$url?page=$page"
-        val pageDoc = app.get(pageUrl).document
+        // 🔑 Loop through episode pages
+        var page = 1
+        while (true) {
+            val pageUrl = if (url.contains("?")) "$url&page=$page" else "$url?page=$page"
+            val pageDoc = app.get(pageUrl).document
 
-        val epCards = pageDoc.select("a.card-link")
-        if (epCards.isEmpty()) break
+            val epCards = pageDoc.select("a.card-link")
+            if (epCards.isEmpty()) break
 
-        epCards.forEachIndexed { idx, ep ->
-            val href = ep.attr("href")
-            episodes.add(
-                newEpisode(fixUrl(href)) {
-                    name = ep.text().ifBlank { "Episode ${(episodes.size) + 1}" }
-                    episode = (episodes.size) + 1
-                    posterUrl = poster
-                }
-            )
+            epCards.forEachIndexed { _, ep ->
+                val href = ep.attr("href")
+                episodes.add(
+                    newEpisode(fixUrl(href)) {
+                        name = ep.text().ifBlank { "Episode ${(episodes.size) + 1}" }
+                        episode = (episodes.size) + 1
+                        posterUrl = poster
+                    }
+                )
+            }
+
+            val hasNext = pageDoc.select("button[aria-label=Next page]").isNotEmpty()
+            if (!hasNext) break
+            page++
         }
 
-        // Check if there is a "Next page" button
-        val hasNext = pageDoc.select("button[aria-label=Next page]").isNotEmpty()
-        if (!hasNext) break
-
-        page++
+        return newAnimeLoadResponse(title, url, TvType.Anime) {
+            this.posterUrl = poster
+            this.plot = description
+            this.tags = genres
+            this.showStatus = showStatus
+            addEpisodes(DubStatus.Subbed, episodes)
+        }
     }
-
-    return newAnimeLoadResponse(title, url, TvType.Anime) {
-        this.posterUrl = poster
-        this.plot = description
-        this.tags = genres
-        this.showStatus = showStatus
-        addEpisodes(DubStatus.Subbed, episodes)
-    }
-}
-
 
     // =======================
     // Extract Links
@@ -183,7 +173,6 @@ class Animeiat : MainAPI() {
                     source = name,
                     name = "${quality}p",
                     url = videoUrl,
-                //    type = if (videoUrl.endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.MP4
                 ) {
                     this.quality = quality
                     this.referer = mainUrl
@@ -196,5 +185,34 @@ class Animeiat : MainAPI() {
 
     private fun fixUrl(url: String): String {
         return if (url.startsWith("http")) url else mainUrl + url
+    }
+
+    // =======================
+    // Helpers
+    // =======================
+    private fun Element.extractPoster(selector: String = "img"): String? {
+        // Check for image tags
+        val img = this.selectFirst(selector)
+        val direct = img?.attr("src")
+        val dataSrc = img?.attr("data-src")
+        val lazySrc = img?.attr("data-lazy-src")
+
+        if (!dataSrc.isNullOrBlank()) return dataSrc
+        if (!lazySrc.isNullOrBlank()) return lazySrc
+        if (!direct.isNullOrBlank()) return direct
+
+        // Fallback: check style="background-image: url(...)"
+        val style = this.attr("style")
+        if (style.contains("url(")) {
+            val regex = Regex("url\\((.*?)\\)")
+            val match = regex.find(style)?.groupValues?.get(1)
+            return match
+                ?.replace("&quot;", "")
+                ?.replace("\"", "")
+                ?.replace("'", "")
+                ?.trim()
+        }
+
+        return null
     }
 }
