@@ -13,9 +13,9 @@ class Animeiat : MainAPI() {
 
     override val mainPage = mainPageOf(
         "$mainUrl/" to "الرئيسية",
-        "$mainUrl/anime" to "قائمة الانمي",
-        "$mainUrl/anime?status=completed" to "مكتمل",
-        "$mainUrl/anime?status=ongoing" to "مستمر"
+        "$mainUrl/anime-list" to "قائمة الانمي",
+    //    "$mainUrl/anime?status=completed" to "مكتمل",
+      // "$mainUrl/anime?status=ongoing" to "مستمر"
     )
 
     // =======================
@@ -124,7 +124,7 @@ class Animeiat : MainAPI() {
                     source = name,
                     name = "${quality}p",
                     url = videoUrl,
-                    type = ExtractorLinkType.MP4
+                 //   type = ExtractorLinkType.MP4
                 ) {
                     this.quality = quality
                     this.referer = mainUrl
