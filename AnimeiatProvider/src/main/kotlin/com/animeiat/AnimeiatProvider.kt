@@ -14,39 +14,53 @@ class Animeiat : MainAPI() {
     override val mainPage = mainPageOf(
         "$mainUrl/" to "الرئيسية",
         "$mainUrl/anime-list" to "قائمة الانمي",
-    //    "$mainUrl/anime?status=completed" to "مكتمل",
-      // "$mainUrl/anime?status=ongoing" to "مستمر"
-    )
 
     // =======================
     // Home Page
     // =======================
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if (request.data.contains("?")) "${request.data}&page=$page" else request.data
-        val doc = app.get(url).document
-        val list = mutableListOf<AnimeSearchResponse>()
+ override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+    val url = if (request.data.contains("/anime")) {
+        // قائمة الأنمي → supports pagination
+        if (request.data.contains("?"))
+            "${request.data}&page=$page"
+        else
+            "${request.data}?page=$page"
+    } else {
+        // الرئيسية → no pagination
+        request.data
+    }
 
+    val doc = app.get(url).document
+    val list = mutableListOf<AnimeSearchResponse>()
+
+    if (request.data.contains("/anime")) {
         // قائمة الأنمي
-        if (request.data.contains("/anime")) {
-            doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
-                toSearchResult(card)
-            }
-        } else {
-            // الرئيسية
-            doc.select("div.row a").mapNotNullTo(list) { link ->
-                val href = link.attr("href") ?: return@mapNotNullTo null
-                val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
-                val poster = link.selectFirst("img")?.attr("data-src")
-                    ?: link.selectFirst("img")?.attr("src")
+        doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
+            toSearchResult(card)
+        }
+    } else {
+        // الرئيسية
+        doc.select("div.row a").mapNotNullTo(list) { link ->
+            val href = link.attr("href") ?: return@mapNotNullTo null
+            val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
+            val poster = link.selectFirst("img")?.attr("data-src")
+                ?: link.selectFirst("img")?.attr("src")
 
-                newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
-                    this.posterUrl = poster
-                }
+            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                this.posterUrl = poster
             }
         }
-
-        return newHomePageResponse(request.name, list, hasNext = true)
     }
+
+    // ✅ Pagination only for anime list
+    val hasNext = if (request.data.contains("/anime")) {
+        doc.select("ul.pagination li a").any { it.text() == (page + 1).toString() }
+    } else {
+        false
+    }
+
+    return newHomePageResponse(request.name, list, hasNext = hasNext)
+}
 
     private fun toSearchResult(card: Element): AnimeSearchResponse? {
         val href = card.selectFirst("a")?.attr("href") ?: return null
