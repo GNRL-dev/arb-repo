@@ -42,9 +42,15 @@ class Animeiat : MainAPI() {
         } else {
             // الرئيسية
             doc.select("div.row a").mapNotNullTo(list) { link ->
-                val href = link.attr("href") ?: return@mapNotNullTo null
-                val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
-                val poster = link.extractPoster()
+                val href = link.attr("href").ifEmpty { return@mapNotNullTo null }
+
+                // ✅ Fix: get anime name from <h2.anime_name>
+                val title = link.selectFirst(".anime_name")?.text()?.trim()
+                    ?: link.text()?.trim()
+                    ?: return@mapNotNullTo null
+
+                val poster = link.selectFirst("img")?.attr("data-src")
+                    ?: link.selectFirst("img")?.attr("src")
 
                 newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
                     this.posterUrl = poster
@@ -67,7 +73,8 @@ class Animeiat : MainAPI() {
         val title = card.selectFirst(".anime_name")?.text()?.trim()
             ?: card.selectFirst(".v-card__title")?.text()?.trim()
             ?: return null
-        val poster = card.extractPoster()
+        val posterStyle = card.selectFirst(".v-image__image--cover")?.attr("style")
+        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
 
         return newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
             this.posterUrl = poster
@@ -89,10 +96,10 @@ class Animeiat : MainAPI() {
 
         val results = doc.select("div.row a, div.some-search-container a").mapNotNull { link ->
             val href = link.attr("href").ifEmpty { return@mapNotNull null }
-            val title = link.selectFirst("h3, span, .title")?.text()?.trim()
+            val title = link.selectFirst("h3, span, .title, .anime_name")?.text()?.trim()
                 ?: link.text()?.trim()
                 ?: return@mapNotNull null
-            val poster = link.extractPoster()
+            val poster = link.selectFirst("img")?.attr("src")
             newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
                 this.posterUrl = poster
             }
@@ -107,8 +114,10 @@ class Animeiat : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url).document
 
-        val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
-        val poster = doc.extractPoster(".v-image__image--cover")
+        val title = doc.selectFirst(".mx-auto.text-center.ltr, .anime_name")?.text()?.trim()
+            ?: "Unknown"
+        val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
+        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
         val description = doc.selectFirst("p.text-justify")?.text()?.trim()
         val genres = doc.select("span.v-chip__content span").map { it.text() }
         val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
@@ -185,34 +194,5 @@ class Animeiat : MainAPI() {
 
     private fun fixUrl(url: String): String {
         return if (url.startsWith("http")) url else mainUrl + url
-    }
-
-    // =======================
-    // Helpers
-    // =======================
-    private fun Element.extractPoster(selector: String = "img"): String? {
-        // Check for image tags
-        val img = this.selectFirst(selector)
-        val direct = img?.attr("src")
-        val dataSrc = img?.attr("data-src")
-        val lazySrc = img?.attr("data-lazy-src")
-
-        if (!dataSrc.isNullOrBlank()) return dataSrc
-        if (!lazySrc.isNullOrBlank()) return lazySrc
-        if (!direct.isNullOrBlank()) return direct
-
-        // Fallback: check style="background-image: url(...)"
-        val style = this.attr("style")
-        if (style.contains("url(")) {
-            val regex = Regex("url\\((.*?)\\)")
-            val match = regex.find(style)?.groupValues?.get(1)
-            return match
-                ?.replace("&quot;", "")
-                ?.replace("\"", "")
-                ?.replace("'", "")
-                ?.trim()
-        }
-
-        return null
     }
 }
