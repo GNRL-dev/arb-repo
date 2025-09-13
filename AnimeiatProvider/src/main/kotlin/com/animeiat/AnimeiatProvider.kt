@@ -21,13 +21,11 @@ class Animeiat : MainAPI() {
     // =======================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (request.data.contains("/anime")) {
-            // قائمة الأنمي → supports pagination
             if (request.data.contains("?"))
                 "${request.data}&page=$page"
             else
                 "${request.data}?page=$page"
         } else {
-            // الرئيسية → no pagination
             request.data
         }
 
@@ -35,30 +33,20 @@ class Animeiat : MainAPI() {
         val list = mutableListOf<AnimeSearchResponse>()
 
         if (request.data.contains("/anime")) {
-            // قائمة الأنمي
             doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
                 toSearchResult(card)
             }
         } else {
-            // الرئيسية
             doc.select("div.row a").mapNotNullTo(list) { link ->
-                val href = link.attr("href").ifEmpty { return@mapNotNullTo null }
-
-                // ✅ Fix: get anime name from <h2.anime_name>
-                val title = link.selectFirst(".anime_name")?.text()?.trim()
-                    ?: link.text()?.trim()
-                    ?: return@mapNotNullTo null
-
-                val poster = link.selectFirst("img")?.attr("data-src")
-                    ?: link.selectFirst("img")?.attr("src")
-
+                val href = link.attr("href") ?: return@mapNotNullTo null
+                val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
+                val poster = link.extractPoster() // robust helper
                 newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
                     this.posterUrl = poster
                 }
             }
         }
 
-        // ✅ Pagination detection: Next page button
         val hasNext = if (request.data.contains("/anime")) {
             doc.select("button[aria-label=Next page]").isNotEmpty()
         } else {
@@ -73,9 +61,7 @@ class Animeiat : MainAPI() {
         val title = card.selectFirst(".anime_name")?.text()?.trim()
             ?: card.selectFirst(".v-card__title")?.text()?.trim()
             ?: return null
-        val posterStyle = card.selectFirst(".v-image__image--cover")?.attr("style")
-        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-
+        val poster = card.extractPoster() // will check child <img> and background styles
         return newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
             this.posterUrl = poster
         }
@@ -96,15 +82,14 @@ class Animeiat : MainAPI() {
 
         val results = doc.select("div.row a, div.some-search-container a").mapNotNull { link ->
             val href = link.attr("href").ifEmpty { return@mapNotNull null }
-            val title = link.selectFirst("h3, span, .title, .anime_name")?.text()?.trim()
+            val title = link.selectFirst("h3, span, .title")?.text()?.trim()
                 ?: link.text()?.trim()
                 ?: return@mapNotNull null
-            val poster = link.selectFirst("img")?.attr("src")
+            val poster = link.extractPoster()
             newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
                 this.posterUrl = poster
             }
         }
-
         return results
     }
 
@@ -114,19 +99,15 @@ class Animeiat : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url).document
 
-        val title = doc.selectFirst(".mx-auto.text-center.ltr, .anime_name")?.text()?.trim()
-            ?: "Unknown"
-        val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
-        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+        val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
+        // Look specifically for the v-image cover element (helper searches inside document)
+        val poster = doc.extractPoster(".v-image__image--cover")
         val description = doc.selectFirst("p.text-justify")?.text()?.trim()
         val genres = doc.select("span.v-chip__content span").map { it.text() }
         val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
-        val showStatus =
-            if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
+        val showStatus = if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
         val episodes = mutableListOf<Episode>()
-
-        // 🔑 Loop through episode pages
         var page = 1
         while (true) {
             val pageUrl = if (url.contains("?")) "$url&page=$page" else "$url?page=$page"
@@ -194,5 +175,65 @@ class Animeiat : MainAPI() {
 
     private fun fixUrl(url: String): String {
         return if (url.startsWith("http")) url else mainUrl + url
+    }
+
+    // =======================
+    // Helpers
+    // =======================
+    private fun Element.extractPoster(selector: String = "img"): String? {
+        // 1) Try common <img> attributes on this element (or its children)
+        val img = this.selectFirst("img")
+        val imgCandidates = listOf(
+            img?.attr("data-src"),
+            img?.attr("data-lazy-src"),
+            img?.attr("src"),
+            img?.attr("data-srcset"),
+            img?.attr("srcset")
+        )
+        imgCandidates.firstOrNull { !it.isNullOrBlank() }?.let {
+            return it.toAbsolutePosterUrl()
+        }
+
+        // 2) If the caller passed a selector (eg ".v-image__image--cover"), find that element
+        val selElem = this.selectFirst(selector)
+
+        // 3) Look for style attribute on the selected element, or any child with background-image
+        val styleCandidates = mutableListOf<String?>()
+        if (selElem != null) styleCandidates.add(selElem.attr("style"))
+        // search anywhere inside 'this' for inline background-image style
+        styleCandidates.add(this.selectFirst("[style*=background-image]")?.attr("style"))
+
+        // 4) also check commonly used data attributes (fallbacks)
+        val dataFallback = listOfNotNull(
+            selElem?.attr("data-bg"),
+            selElem?.attr("data-src"),
+            selElem?.attr("data-background")
+        ).firstOrNull()
+        if (!dataFallback.isNullOrBlank()) return dataFallback.toAbsolutePosterUrl()
+
+        // 5) Extract URL from style candidates
+        for (style in styleCandidates) {
+            if (style.isNullOrBlank()) continue
+            if (!style.contains("url(")) continue
+            val regex = Regex("url\\((.*?)\\)")
+            val match = regex.find(style)?.groupValues?.get(1)
+            val cleaned = match
+                ?.replace("&quot;", "")
+                ?.replace("\"", "")
+                ?.replace("'", "")
+                ?.trim()
+            if (!cleaned.isNullOrBlank()) return cleaned.toAbsolutePosterUrl()
+        }
+
+        return null
+    }
+
+    private fun String.toAbsolutePosterUrl(): String {
+        var p = this.replace("&quot;", "").replace("\"", "").replace("'", "").trim()
+        if (p.startsWith("data:")) return p // keep data URIs
+        if (p.startsWith("//")) p = "https:$p"
+        if (p.startsWith("/")) return mainUrl.trimEnd('/') + p
+        if (!p.startsWith("http")) return "$mainUrl/$p"
+        return p
     }
 }
