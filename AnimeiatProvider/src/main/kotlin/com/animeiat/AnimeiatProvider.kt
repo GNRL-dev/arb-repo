@@ -3,6 +3,8 @@ package com.animeiat
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.AppUtils.newExtractorLink
 import org.jsoup.nodes.Element
 
 class Animeiat : MainAPI() {
@@ -104,13 +106,13 @@ class Animeiat : MainAPI() {
             val quality = src.attr("size").toIntOrNull() ?: Qualities.Unknown.value
 
             callback(
-                ExtractorLink(
+                newExtractorLink(
                     source = name,
                     name = name,
                     url = videoUrl,
                     referer = mainUrl,
                     quality = quality,
-                    isM3u8 = true
+                    type = ExtractorLinkType.M3U8
                 )
             )
         }
