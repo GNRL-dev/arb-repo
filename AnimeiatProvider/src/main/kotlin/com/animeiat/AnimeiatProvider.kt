@@ -105,15 +105,14 @@ class Animeiat : MainAPI() {
             val videoUrl = src.attr("src")
             val quality = src.attr("size").toIntOrNull() ?: Qualities.Unknown.value
 
-          callback(
+          callback.invoke(
             newExtractorLink(
-                source = name,
-                name = name,
-                url = videoUrl,
-              //  referer = mainUrl,
-                this.referer = this@Animeiat.mainUrl
-                quality = quality,
-              //  isM3u8 = true
+                this.name,
+                this.name,
+                finalUrl,
+                this.mainUrl,
+                quality.value,
+                false
             )
         )
         }
