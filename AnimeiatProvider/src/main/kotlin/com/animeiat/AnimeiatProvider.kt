@@ -110,7 +110,8 @@ class Animeiat : MainAPI() {
                 source = name,
                 name = name,
                 url = videoUrl,
-                referer = mainUrl,
+              //  referer = mainUrl,
+                this.referer = this@Animeiat.mainUrl
                 quality = quality,
               //  isM3u8 = true
             )
