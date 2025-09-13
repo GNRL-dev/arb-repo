@@ -14,8 +14,6 @@ class Animeiat : MainAPI() {
     override val mainPage = mainPageOf(
         "$mainUrl/" to "الرئيسية",
         "$mainUrl/anime-list" to "قائمة الانمي",
-        "$mainUrl/anime?status=completed&page=" to "مكتمل",
-        "$mainUrl/anime?status=ongoing&page=" to "مستمر"
     )
 
     // =======================
