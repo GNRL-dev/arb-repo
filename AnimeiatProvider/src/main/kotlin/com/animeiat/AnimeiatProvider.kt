@@ -1,10 +1,7 @@
 package com.animeiat
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 
 class Animeiat : MainAPI() {
@@ -15,27 +12,53 @@ class Animeiat : MainAPI() {
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie)
 
     override val mainPage = mainPageOf(
-        "$mainUrl/anime?status=completed&page=" to "مكتمل",
-        "$mainUrl/anime?status=ongoing&page=" to "مستمر"
+        "$mainUrl/" to "الرئيسية",
+        "$mainUrl/anime" to "قائمة الانمي",
+        "$mainUrl/anime?status=completed" to "مكتمل",
+        "$mainUrl/anime?status=ongoing" to "مستمر"
     )
 
     // =======================
     // Home Page
     // =======================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val doc = app.get(request.data + page).document
-        val items = doc.select("div.v-card")
-        val list = items.mapNotNull { item ->
-            val title = item.selectFirst(".v-card__title")?.text()?.trim() ?: return@mapNotNull null
-            val href = item.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-            val posterStyle = item.selectFirst(".v-image__image--cover")?.attr("style")
-            val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+        val url = if (request.data.contains("?")) "${request.data}&page=$page" else request.data
+        val doc = app.get(url).document
+        val list = mutableListOf<AnimeSearchResponse>()
 
-            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
-                this.posterUrl = poster
+        // قائمة الأنمي
+        if (request.data.contains("/anime")) {
+            doc.select("div.v-card.v-sheet").mapNotNullTo(list) { card ->
+                toSearchResult(card)
+            }
+        } else {
+            // الرئيسية
+            doc.select("div.row a").mapNotNullTo(list) { link ->
+                val href = link.attr("href") ?: return@mapNotNullTo null
+                val title = link.attr("title")?.ifBlank { link.text() } ?: return@mapNotNullTo null
+                val poster = link.selectFirst("img")?.attr("data-src")
+                    ?: link.selectFirst("img")?.attr("src")
+
+                newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                    this.posterUrl = poster
+                }
             }
         }
+
         return newHomePageResponse(request.name, list, hasNext = true)
+    }
+
+    private fun toSearchResult(card: Element): AnimeSearchResponse? {
+        val href = card.selectFirst("a")?.attr("href") ?: return null
+        val title = card.selectFirst(".anime_name")?.text()?.trim()
+            ?: card.selectFirst(".v-card__title")?.text()?.trim()
+            ?: return null
+        val posterStyle = card.selectFirst(".v-image__image--cover")?.attr("style")
+        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+
+        return newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+            this.posterUrl = poster
+        }
     }
 
     // =======================
@@ -43,16 +66,7 @@ class Animeiat : MainAPI() {
     // =======================
     override suspend fun search(query: String): List<SearchResponse> {
         val doc = app.get("$mainUrl/anime?q=$query").document
-        return doc.select("div.v-card").mapNotNull { item ->
-            val title = item.selectFirst(".v-card__title")?.text()?.trim() ?: return@mapNotNull null
-            val href = item.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-            val posterStyle = item.selectFirst(".v-image__image--cover")?.attr("style")
-            val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-
-            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
-                this.posterUrl = poster
-            }
-        }
+        return doc.select("div.v-card.v-sheet").mapNotNull { toSearchResult(it) }
     }
 
     // =======================
@@ -66,7 +80,7 @@ class Animeiat : MainAPI() {
         val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
         val description = doc.selectFirst("p.text-justify")?.text()?.trim()
         val genres = doc.select("span.v-chip__content span").map { it.text() }
-        val statusText = doc.selectFirst("span")?.text()?.trim() ?: ""
+        val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
         val showStatus =
             if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
@@ -105,18 +119,17 @@ class Animeiat : MainAPI() {
             val videoUrl = src.attr("src")
             val quality = src.attr("size").toIntOrNull() ?: Qualities.Unknown.value
 
-          callback(
-    newExtractorLink(
-        source = name,
-        name = name,
-        url = videoUrl,
-        type = ExtractorLinkType.M3U8
-    ) {
-        this.quality = quality
-        this.referer = mainUrl
-    }
-)
-
+            callback.invoke(
+                newExtractorLink(
+                    source = name,
+                    name = "${quality}p",
+                    url = videoUrl,
+                    type = ExtractorLinkType.MP4
+                ) {
+                    this.quality = quality
+                    this.referer = mainUrl
+                }
+            )
         }
 
         return true
