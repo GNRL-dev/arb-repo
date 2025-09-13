@@ -1,192 +1,124 @@
 package com.animeiat
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.loadExtractor
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.lagradost.nicehttp.Requests
+import org.jsoup.nodes.Element
 
 class Animeiat : MainAPI() {
-    override var lang = "ar"
-    override var mainUrl = "https://api.animeiat.co/v1"
-    private val pageUrl = "https://www.animeiat.tv"
+    override var mainUrl = "https://ww1.animeiat.tv"
     override var name = "Animeiat"
-    override val usesWebView = false
+    override var lang = "ar"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie)
 
-    data class Data(
-        @JsonProperty("anime_name") var animeName: String? = null,
-        @JsonProperty("title") var title: String? = null,
-        @JsonProperty("slug") var slug: String? = null,
-        @JsonProperty("story") var story: String? = null,
-        @JsonProperty("other_names") var otherNames: String? = null,
-        @JsonProperty("total_episodes") var totalEpisodes: Int? = null,
-        @JsonProperty("number") var number: Int? = null,
-        @JsonProperty("age") var age: String? = null,
-        @JsonProperty("type") var type: String? = null,
-        @JsonProperty("status") var status: String? = null,
-        @JsonProperty("poster_path") var posterPath: String? = null
-    )
-
-    data class All(@JsonProperty("data") var data: ArrayList<Data> = arrayListOf())
-
     override val mainPage = mainPageOf(
-        "$mainUrl/home/sticky-episodes?page=" to "Episodes (H)",
-        "$mainUrl/anime?status=completed&page=" to "Completed",
-        "$mainUrl/anime?status=ongoing&page=" to "Ongoing"
+        "$mainUrl/anime?status=completed&page=" to "مكتمل",
+        "$mainUrl/anime?status=ongoing&page=" to "مستمر"
     )
 
+    // =======================
+    // Home Page
+    // =======================
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val json = parseJson<All>(app.get(request.data + page).text)
-        val list = json.data.map {
-            newAnimeSearchResponse(
-                it.animeName ?: it.title ?: "Unknown Title",
-                "$mainUrl/anime/${it.slug?.replace("-episode.*".toRegex(), "")}",
-                when (it.type) {
-                    "movie" -> TvType.AnimeMovie
-                    "tv" -> TvType.Anime
-                    else -> TvType.OVA
-                }
-            ) {
-                addDubStatus(false, it.totalEpisodes ?: it.number ?: 1)
-                otherName = it.otherNames?.split("\n")?.last()
-                posterUrl = "https://api.animeiat.co/storage/" + it.posterPath
+        val doc = app.get(request.data + page).document
+        val items = doc.select("div.v-card")
+        val list = items.mapNotNull { item ->
+            val title = item.selectFirst(".v-card__title")?.text()?.trim() ?: return@mapNotNull null
+            val href = item.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+            val posterStyle = item.selectFirst(".v-image__image--cover")?.attr("style")
+            val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+
+            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                this.posterUrl = poster
             }
         }
-        return if (request.name.contains("(H)")) {
-    newHomePageResponse(
-        request.name.replace(" (H)", ""),
-        list,
-        hasNext = false
-    )
-} else {
-    newHomePageResponse(request.name, list)
-}
-
+        return newHomePageResponse(request.name, list, hasNext = true)
     }
 
+    // =======================
+    // Search
+    // =======================
     override suspend fun search(query: String): List<SearchResponse> {
-        val json = parseJson<All>(app.get("$mainUrl/anime?q=$query").text)
-        return json.data.map {
-            newAnimeSearchResponse(
-                it.animeName ?: it.title ?: "Unknown Title",
-                "$mainUrl/anime/${it.slug}",
-                when (it.type) {
-                    "movie" -> TvType.AnimeMovie
-                    "tv" -> TvType.Anime
-                    else -> TvType.OVA
-                }
-            ) {
-                addDubStatus(false, it.totalEpisodes ?: 1)
-                otherName = it.otherNames?.split("\n")?.last()
-                posterUrl = "https://api.animeiat.co/storage/" + it.posterPath
+        val doc = app.get("$mainUrl/anime?q=$query").document
+        return doc.select("div.v-card").mapNotNull { item ->
+            val title = item.selectFirst(".v-card__title")?.text()?.trim() ?: return@mapNotNull null
+            val href = item.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+            val posterStyle = item.selectFirst(".v-image__image--cover")?.attr("style")
+            val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+
+            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
+                this.posterUrl = poster
             }
         }
     }
 
-    data class Year(@JsonProperty("name") var name: String? = null)
-    data class Genres(@JsonProperty("name") var name: String? = null)
-
-    data class LoadData(
-        @JsonProperty("anime_name") var animeName: String? = null,
-        @JsonProperty("slug") var slug: String? = null,
-        @JsonProperty("story") var story: String? = null,
-        @JsonProperty("other_names") var otherNames: String? = null,
-        @JsonProperty("age") var age: String? = null,
-        @JsonProperty("type") var type: String? = null,
-        @JsonProperty("status") var status: String? = null,
-        @JsonProperty("poster_path") var posterPath: String? = null,
-        @JsonProperty("year") var year: Year? = null,
-        @JsonProperty("genres") var genres: ArrayList<Genres> = arrayListOf()
-    )
-
-    data class Load(@JsonProperty("data") var data: LoadData? = null)
-    data class Meta(@JsonProperty("last_page") var lastPage: Int? = null)
-
-    data class EpisodeData(
-        @JsonProperty("title") var title: String? = null,
-        @JsonProperty("slug") var slug: String? = null,
-        @JsonProperty("number") var number: Int? = null,
-        @JsonProperty("video_id") var videoId: Int? = null,
-        @JsonProperty("poster_path") var posterPath: String? = null
-    )
-
-    data class Episodes(
-        @JsonProperty("data") var data: ArrayList<EpisodeData> = arrayListOf(),
-        @JsonProperty("meta") var meta: Meta = Meta()
-    )
-
+    // =======================
+    // Load Anime Details
+    // =======================
     override suspend fun load(url: String): LoadResponse {
-        val session = Requests()
-        val json = parseJson<Load>(session.get(url.replace(pageUrl, mainUrl)).text)
-        val episodes = ArrayList<Episode>()
+        val doc = app.get(url).document
 
-        val lastPage = parseJson<Episodes>(session.get("$url/episodes").text).meta.lastPage ?: 1
-        for (pageNumber in 1..lastPage) {
-    val episodePage = parseJson<Episodes>(
-        session.get("$url/episodes?page=$pageNumber").text
-    )
+        val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
+        val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
+        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+        val description = doc.selectFirst("p.text-justify")?.text()?.trim()
+        val genres = doc.select("span.v-chip__content span").map { it.text() }
+        val statusText = doc.selectFirst("span")?.text()?.trim() ?: ""
+        val showStatus =
+            if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
-    episodes += episodePage.data.map {
-        newEpisode("$pageUrl/watch/${json.data?.slug}") {
-            name = it.title ?: "Episode ${it.number}"
-            episode = it.number
-            posterUrl = "https://api.animeiat.co/storage/" + it.posterPath
-        }
-    }
-}
-
-        return newAnimeLoadResponse(
-            json.data?.animeName ?: "Unknown Title",
-            "$pageUrl/watch/${json.data?.slug}",
-            when (json.data?.type) {
-                "movie" -> TvType.AnimeMovie
-                "tv" -> TvType.Anime
-                else -> TvType.OVA
+        val episodes = doc.select("a.card-link").mapIndexed { index, ep ->
+            val href = ep.attr("href")
+            newEpisode(fixUrl(href)) {
+                name = "Episode ${index + 1}"
+                episode = index + 1
+                posterUrl = poster
             }
-        ) {
-            japName = json.data?.otherNames?.replace("\\n.*".toRegex(), "")
-            engName = json.data?.animeName
-            posterUrl = "https://api.animeiat.co/storage/" + json.data?.posterPath
-            year = json.data?.year?.name?.toIntOrNull()
+        }
+
+        return newAnimeLoadResponse(title, url, TvType.Anime) {
+            this.posterUrl = poster
+            this.plot = description
+            this.tags = genres
+            this.showStatus = showStatus
             addEpisodes(DubStatus.Subbed, episodes)
-            plot = json.data?.story
-            tags = json.data?.genres?.mapNotNull { it.name }
-            showStatus = if (json.data?.status == "completed") ShowStatus.Completed else ShowStatus.Ongoing
         }
     }
 
+    // =======================
+    // Extract Links
+    // =======================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val url = if (data.contains("-episode")) data else "$data-episode-1"
-        val doc = app.get(url).document
-        val script = doc.select("body > script").first()?.html()
-        val id = script?.replace(".*4\",slug:\"|\",duration:.*".toRegex(), "")
-        val player = app.get("$pageUrl/player/$id").document
+        val doc = app.get(data).document
+        val iframe = doc.selectFirst("iframe")?.attr("src") ?: return false
+        val player = app.get(fixUrl(iframe)).document
 
-        player.select("source").forEach {
-            val videoUrl = it.attr("src") ?: return@forEach
-            val quality = it.attr("size").toIntOrNull() ?: 720
+        player.select("video source").forEach { src ->
+            val videoUrl = src.attr("src")
+            val quality = src.attr("size").toIntOrNull() ?: Qualities.Unknown.value
 
-            callback.invoke(
+            callback(
                 ExtractorLink(
                     source = name,
                     name = name,
                     url = videoUrl,
-                    referer = pageUrl,
+                    referer = mainUrl,
                     quality = quality,
-                    type = ExtractorLinkType.M3U8
+                    isM3u8 = true
                 )
             )
         }
 
         return true
+    }
+
+    private fun fixUrl(url: String): String {
+        return if (url.startsWith("http")) url else mainUrl + url
     }
 }
