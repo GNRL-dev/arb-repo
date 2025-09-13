@@ -110,35 +110,56 @@ class Animeiat : MainAPI() {
     // =======================
     // Load Anime Details
     // =======================
-    override suspend fun load(url: String): LoadResponse {
-        val doc = app.get(url).document
+  override suspend fun load(url: String): LoadResponse {
+    val doc = app.get(url).document
 
-        val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
-        val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
-        val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
-        val description = doc.selectFirst("p.text-justify")?.text()?.trim()
-        val genres = doc.select("span.v-chip__content span").map { it.text() }
-        val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
-        val showStatus =
-            if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
+    val title = doc.selectFirst(".mx-auto.text-center.ltr")?.text()?.trim() ?: "Unknown"
+    val posterStyle = doc.selectFirst(".v-image__image--cover")?.attr("style")
+    val poster = posterStyle?.substringAfter("url(")?.substringBefore(")")?.replace("\"", "")
+    val description = doc.selectFirst("p.text-justify")?.text()?.trim()
+    val genres = doc.select("span.v-chip__content span").map { it.text() }
+    val statusText = doc.select("div:contains(مكتمل), div:contains(مستمر)")?.text() ?: ""
+    val showStatus =
+        if (statusText.contains("مكتمل")) ShowStatus.Completed else ShowStatus.Ongoing
 
-        val episodes = doc.select("a.card-link").mapIndexed { index, ep ->
+    val episodes = mutableListOf<Episode>()
+
+    // 🔑 Loop through episode pages
+    var page = 1
+    while (true) {
+        val pageUrl = if (url.contains("?")) "$url&page=$page" else "$url?page=$page"
+        val pageDoc = app.get(pageUrl).document
+
+        val epCards = pageDoc.select("a.card-link")
+        if (epCards.isEmpty()) break
+
+        epCards.forEachIndexed { idx, ep ->
             val href = ep.attr("href")
-            newEpisode(fixUrl(href)) {
-                name = "Episode ${index + 1}"
-                episode = index + 1
-                posterUrl = poster
-            }
+            episodes.add(
+                newEpisode(fixUrl(href)) {
+                    name = ep.text().ifBlank { "Episode ${(episodes.size) + 1}" }
+                    episode = (episodes.size) + 1
+                    posterUrl = poster
+                }
+            )
         }
 
-        return newAnimeLoadResponse(title, url, TvType.Anime) {
-            this.posterUrl = poster
-            this.plot = description
-            this.tags = genres
-            this.showStatus = showStatus
-            addEpisodes(DubStatus.Subbed, episodes)
-        }
+        // Check if there is a "Next page" button
+        val hasNext = pageDoc.select("button[aria-label=Next page]").isNotEmpty()
+        if (!hasNext) break
+
+        page++
     }
+
+    return newAnimeLoadResponse(title, url, TvType.Anime) {
+        this.posterUrl = poster
+        this.plot = description
+        this.tags = genres
+        this.showStatus = showStatus
+        addEpisodes(DubStatus.Subbed, episodes)
+    }
+}
+
 
     // =======================
     // Extract Links
