@@ -1,11 +1,11 @@
 package com.faselhd
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.nicehttp.requestCreator
 import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.M3u8Helper
 import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import org.jsoup.nodes.Element
 
@@ -174,7 +174,7 @@ class FaselHD : MainAPI() {
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean {
+    ) {
         var doc = app.get(data).document
         if (doc.select("title").text() == "Just a moment...") {
             doc = app.get(data, interceptor = cfKiller).document
@@ -187,7 +187,7 @@ class FaselHD : MainAPI() {
             if (method == "download") {
                 val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
                 callback.invoke(
-                    newExtractorLink(
+                    ExtractorLink(
                         this.name,
                         this.name + " Download Source",
                         player.select("div.dl-link a").attr("href"),
@@ -211,6 +211,5 @@ class FaselHD : MainAPI() {
                 ).toList().forEach(callback)
             }
         }
-        return true
     }
 }
