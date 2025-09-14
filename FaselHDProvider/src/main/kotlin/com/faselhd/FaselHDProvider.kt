@@ -267,7 +267,7 @@ override suspend fun loadLinks(
                 else -> Qualities.Unknown.value
             }
 
-           M3u8Helper.generateM3u8(
+ M3u8Helper.generateM3u8(
     this.name,
     url,
     referer = mainUrl
@@ -276,13 +276,15 @@ override suspend fun loadLinks(
         newExtractorLink(
             source = link.source,
             name = link.name,
-            url = link.url,
-            referer = link.referer,
-            quality = quality,
-            isM3u8 = link.isM3u8
-        )
+            url = link.url
+        ) {
+            this.referer = link.referer
+            this.isM3u8 = link.isM3u8
+            this.quality = quality
+        }
     )
 }
+
 
         }
     }
