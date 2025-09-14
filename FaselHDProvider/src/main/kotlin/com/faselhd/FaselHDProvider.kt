@@ -259,28 +259,27 @@ class FaselHD : MainAPI() {
         Regex("https?://[^']+").find(onclick)?.value
     }
 
-    // 🔹 Resolve each link and extract M3U8 streams
-    for (url: String in playerLinks) {
-        val resolved: List<WebViewResolver.WebViewResolve> = WebViewResolver(
-            Regex("""\.m3u8""")
-        ).resolveUsingWebView(
-            requestCreator("GET", url, referer = mainUrl)
-        )
-
-        for (res: WebViewResolver.WebViewResolve in resolved) {
-            val streamUrl = res.url
-            if (streamUrl != null && streamUrl.endsWith(".m3u8")) {
-                val links = M3u8Helper.generateM3u8(
-                    this.name,
-                    streamUrl,
-                    referer = mainUrl
+    // 🔹 Resolve each link via WebViewResolver
+    for (url in playerLinks) {
+        val resolved: Pair<okhttp3.Request?, List<okhttp3.Request>> =
+            WebViewResolver(Regex("""\.m3u8"""))
+                .resolveUsingWebView(
+                    requestCreator("GET", url, referer = mainUrl)
                 )
-                links.forEach { link -> callback.invoke(link) }
-            }
+
+        val m3u8Url: String? = resolved.first?.url?.toString()
+
+        if (m3u8Url != null && m3u8Url.endsWith(".m3u8")) {
+            val links = M3u8Helper.generateM3u8(
+                this.name,
+                m3u8Url,
+                referer = mainUrl
+            )
+            links.forEach { link -> callback.invoke(link) }
         }
     }
 
-    // 🔹 Extract download links as backup
+    // 🔹 Extract download links (backup)
     doc.select(".downloadLinks a").forEach { link ->
         val href = link.attr("href")
         if (href.isNotEmpty()) {
@@ -299,5 +298,6 @@ class FaselHD : MainAPI() {
 
     return true
 }
+
 
 }
