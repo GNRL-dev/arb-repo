@@ -211,5 +211,6 @@ class FaselHD : MainAPI() {
                 ).toList().forEach(callback)
             }
         }
+        return true
     }
 }
