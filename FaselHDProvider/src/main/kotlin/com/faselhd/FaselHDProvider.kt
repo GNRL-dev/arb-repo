@@ -1,4 +1,4 @@
-package com.faselhd
+٨package com.faselhd
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.nicehttp.requestCreator
@@ -186,7 +186,7 @@ class FaselHD : MainAPI() {
         }
     }
 
- /*   override suspend fun loadLinks(
+   override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -241,8 +241,8 @@ class FaselHD : MainAPI() {
             }
         }
         return true
-    }*/
-override suspend fun loadLinks(
+    }
+/* override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -347,7 +347,7 @@ override suspend fun loadLinks(
     }
 
     return true
-}
+}*/
 
 
 }
