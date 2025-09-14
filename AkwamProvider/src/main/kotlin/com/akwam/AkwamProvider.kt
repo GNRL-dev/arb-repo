@@ -6,13 +6,10 @@ import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newHomePageResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
-//import com.lagradost.cloudstream3.extractors.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
-//import com.lagradost.cloudstream3.utils.encodeURL
-//import com.lagradost.cloudstream3.utils.AppUtils.encodeURL
 import java.net.URLEncoder
 
 
@@ -60,7 +57,7 @@ class Akwam : MainAPI() {
         return doc.select("div.col-lg-auto").mapNotNull {
             it.toSearchResponse()
         }
-    }
+    }*/
     override suspend fun search(query: String, page: Int): SearchResponseList? {
     val url = "$mainUrl/search?q=${query.encodeURL()}&page=$page"
     val doc = app.get(url).document
@@ -70,8 +67,8 @@ class Akwam : MainAPI() {
     }
 
     return SearchResponseList(results)
-    }*/
-    override suspend fun search(query: String, page: Int): SearchResponseList? {
+    }
+ /*  override suspend fun search(query: String, page: Int): SearchResponseList? {
     val encodedQuery = URLEncoder.encode(query, "UTF-8")
     val url = "$mainUrl/search?q=$encodedQuery&page=$page"
 
@@ -82,7 +79,7 @@ class Akwam : MainAPI() {
     }
 
     return newSearchResponseList(results)
-}
+}*/
 
 
     private fun String.getIntFromText(): Int? {
