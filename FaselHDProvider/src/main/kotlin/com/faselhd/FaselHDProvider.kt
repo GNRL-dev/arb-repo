@@ -253,27 +253,27 @@ override suspend fun loadLinks(
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Get the iframe URL
+    // 🔹 Extract the iframe URL
     val iframeUrl = doc.select("iframe[name=player_iframe]").attr("src")
     if (iframeUrl.isNotBlank()) {
-        val resolved = WebViewResolver(Regex("""\.m3u8"""))
-            .resolveUsingWebView(
-                requestCreator("GET", iframeUrl, referer = mainUrl),
-                timeout = 30000 // wait up to 30s to allow ads to finish
-            )
+        val resolved: Pair<okhttp3.Request?, List<okhttp3.Request>> =
+            WebViewResolver(Regex("""\.m3u8"""))
+                .resolveUsingWebView(
+                    iframeUrl,
+                    referer = mainUrl
+                )
 
-        val m3u8Url = resolved.first?.url?.toString()
+        val m3u8Url: String? = resolved.first?.url?.toString()
         if (m3u8Url != null && m3u8Url.endsWith(".m3u8")) {
-            val links = M3u8Helper.generateM3u8(
+            M3u8Helper.generateM3u8(
                 this.name,
                 m3u8Url,
                 referer = mainUrl
-            )
-            links.forEach { link -> callback.invoke(link) }
+            ).forEach(callback)
         }
     }
 
-    // 🔹 Extract backup download links if available
+    // 🔹 Extract download links as backup
     doc.select(".downloadLinks a").forEach { link ->
         val href = link.attr("href")
         if (href.isNotEmpty()) {
