@@ -186,54 +186,7 @@ class FaselHD : MainAPI() {
         }
     }
 
-  /* override suspend fun loadLinks(
-        data: String,
-        isCasting: Boolean,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ): Boolean {
-        var doc = app.get(data).document
-        if (doc.select("title").text() == "Just a moment...") {
-            doc = app.get(data, interceptor = cfKiller).document
-        }
-
-        listOf(
-            doc.select(".downloadLinks a").attr("href") to "download",
-            doc.select("iframe[name=\"player_iframe\"]").attr("src") to "iframe"
-        ).apmap { (url, method) ->
-            if (method == "download") {
-                val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
-                val link = player.select("div.dl-link a").attr("href")
-                callback.invoke(
-                    newExtractorLink(
-                    source = this.name,
-                    name = this.name + " Download Source",
-                    url = link,
-               ){ 
-                    this.referer = this@FaselHD.mainUrl
-                    this.quality = quality
-               }
-                )
-
-            } else if (method == "iframe") {
-                val webView = WebViewResolver(
-                    Regex("""master\\.m3u8""")
-                ).resolveUsingWebView(
-                    requestCreator(
-                        "GET", url, referer = mainUrl
-                    )
-                ).first
-
-                M3u8Helper.generateM3u8(
-                    this.name,
-                    webView?.url.toString(),
-                    referer = mainUrl
-                ).toList().forEach(callback)
-            }
-        }
-        return true
-    }*/
-override suspend fun loadLinks(
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -310,7 +263,97 @@ override suspend fun loadLinks(
     }
 
     return true
+}*/
+override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    var doc = app.get(data).document
+    if (doc.select("title").text() == "Just a moment...") {
+        doc = app.get(data, interceptor = cfKiller).document
+    }
+
+    // Collect download links (any /file/ link)
+    val downloadCandidates = doc.select("a[href*=\"/file/\"]")
+        .mapNotNull { element ->
+            val href = element.attr("href").takeIf { it.isNotBlank() }
+            href?.let { it to "download" }
+        }
+
+    // Collect iframe candidate
+    val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
+        ?.attr("src")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { it to "iframe" }
+
+    val candidates = (downloadCandidates + listOfNotNull(iframeCandidate))
+
+    println("FaselHD → Candidates found: ${candidates.joinToString { "${it.second}: ${it.first}" }}")
+
+    candidates.apmap { (url, method) ->
+        when (method) {
+            "download" -> runCatching {
+                println("FaselHD → Download branch, URL = $url")
+
+                callback(
+                    newExtractorLink(
+                        source = name,
+                        name = "$name Download Source",
+                        url = url
+                    ).apply {
+                        referer = mainUrl
+                        quality = quality ?: Qualities.Unknown.value
+                    }
+                )
+            }.onFailure { e ->
+                println("FaselHD → Download branch failed: ${e.message}")
+                e.printStackTrace()
+            }
+
+            "iframe" -> runCatching {
+                println("FaselHD → Iframe branch, URL = $url")
+
+                val result = WebViewResolver(Regex("""\.m3u8(\?.*)?$"""))
+                    .resolveUsingWebView(
+                        requestCreator("GET", url, referer = mainUrl)
+                    )
+
+                val m3u8Url = result?.toString()
+
+                if (!m3u8Url.isNullOrBlank()) {
+                    println("FaselHD → Found .m3u8 URL = $m3u8Url")
+
+                    M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
+                        .forEach { link ->
+                            println("FaselHD → Generated m3u8 link = ${link.url}")
+                            callback(link)
+                        }
+                } else {
+                    println("FaselHD → No .m3u8 URL resolved from iframe. Trying raw fetch...")
+
+                    val iframeResponse = app.get(
+                        url,
+                        referer = mainUrl,
+                        interceptor = cfKiller,
+                        timeout = 120
+                    )
+
+                    println("FaselHD → Iframe raw response code: ${iframeResponse.code}")
+                    println("FaselHD → Iframe raw body (first 2000 chars):")
+                    println(iframeResponse.text.take(2000))
+                }
+            }.onFailure { e ->
+                println("FaselHD → Iframe branch failed: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    return true
 }
+
 
 
 }
