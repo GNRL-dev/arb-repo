@@ -60,18 +60,23 @@ class Akwam : MainAPI() {
             it.toSearchResponse()
         }
     }*/
-    override suspend fun search(query: String, page: Int): SearchResponseList? {
-    val pageParam = if (page > 1) "&page=$page" else ""
-    val encodedQuery = URLEncoder.encode(query, "UTF-8")
-    val url = "$mainUrl/search?q=$encodedQuery$pageParam"
+    suspend fun searchPage(query: String, page: Int): Pair<List<SearchResponse>, Boolean> {
+    val url = if (page == 1) {
+        "$mainUrl/search?q=$query"
+    } else {
+        "$mainUrl/search?q=$query&page=$page"
+    }
 
     val doc = app.get(url).document
+
     val results = doc.select("div.col-lg-auto")
         .mapNotNull { it.toSearchResponse() }
 
-    // Wrap the list in SearchResponseList
-    return SearchResponseList(results)
-    }
+    val hasNextPage = doc.selectFirst("a.page-link[rel=next]") != null
+
+    return Pair(results, hasNextPage)
+}
+
 
     private fun String.getIntFromText(): Int? {
         return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
