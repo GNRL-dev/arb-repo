@@ -31,8 +31,14 @@ class FaselHD : MainAPI() {
         val title = select("div.postDiv a div img").attr("alt")
         val quality = select(".quality").first()?.text()?.replace("1080p |-".toRegex(), "")
         val type = if(title.contains("فيلم")) TvType.Movie else TvType.TvSeries
-        return MovieSearchResponse(
-            title.replace("الموسم الأول|برنامج|فيلم|مترجم|اون لاين|مسلسل|مشاهدة|انمي|أنمي".toRegex(),""),
+        return newMovieSearchResponse(
+            title.replace("الموسم الأول|برنامج|فيلم|مترجم|اون لاين|مسلسل|مشاهدة|انمي|أنمي".toRegex(.split(",")[0].replace("الموسم الأول|برنامج|فيلم|مترجم|اون لاين|مسلسل|مشاهدة|انمي|أنمي".toRegex(), ""), 
+            title.replace("الموسم الأول|برنامج|فيلم|مترجم|اون لاين|مسلسل|مشاهدة|انمي|أنمي".toRegex(.split(",")[1], 
+            title.replace("الموسم الأول|برنامج|فيلم|مترجم|اون لاين|مسلسل|مشاهدة|انمي|أنمي".toRegex(.split(",")[3]) {
+    this.posterUrl = posterUrl
+    this.quality = getQualityFromString(quality)
+    this.posterHeaders = cfKiller.getCookieHeaders(alternativeUrl).toMap()
+},""),
             url,
             this@FaselHD.name,
             type,
@@ -125,8 +131,15 @@ class FaselHD : MainAPI() {
             val episodes = ArrayList<Episode>()
             doc.select("div.epAll a").map {
                 episodes.add(
-                    Episode(
-                        it.attr("href"),
+                    newEpisode(
+                        it.attr("href".split(",")[0]) {
+    this.name = 
+                        it.attr("href".split(",")[1]
+    this.season = 
+                        it.attr("href".split(",")[2]
+    this.episode = 
+                        it.attr("href".split(",")[3]
+},
                         it.text(),
                         doc.select("div.seasonDiv.active div.title").text().getIntFromText() ?: 1,
                         it.text().getIntFromText(),
@@ -142,8 +155,15 @@ class FaselHD : MainAPI() {
                     }
                     s.select("div.epAll a").map {
                         episodes.add(
-                            Episode(
-                                it.attr("href"),
+                            newEpisode(
+                                it.attr("href".split(",")[0]) {
+    this.name = 
+                                it.attr("href".split(",")[1]
+    this.season = 
+                                it.attr("href".split(",")[2]
+    this.episode = 
+                                it.attr("href".split(",")[3]
+},
                                 it.text(),
                                 s.select("div.seasonDiv.active div.title").text().getIntFromText(),
                                 it.text().getIntFromText(),
@@ -180,7 +200,7 @@ class FaselHD : MainAPI() {
             if(method == "download") {
                 val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
                 callback.invoke(
-                    ExtractorLink(
+                    newExtractorLink(
                         this.name,
                         this.name + " Download Source",
                         player.select("div.dl-link a").attr("href"),
