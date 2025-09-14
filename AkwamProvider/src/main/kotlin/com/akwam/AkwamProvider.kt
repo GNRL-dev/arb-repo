@@ -51,62 +51,13 @@ class Akwam : MainAPI() {
         return newHomePageResponse(request.name, list)
     }
 
-   /* override suspend fun search(query: String): List<SearchResponse> {
+    override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/search?q=$query"
         val doc = app.get(url).document
         return doc.select("div.col-lg-auto").mapNotNull {
             it.toSearchResponse()
         }
     }
-    override suspend fun search(query: String, page: Int): SearchResponseList? {
-    val url = "$mainUrl/search?q=${query.encodeURL()}&page=$page"
-    val doc = app.get(url).document
-
-    val results = doc.select("div.col-lg-auto").mapNotNull {
-        it.toSearchResponse()
-    }
-
-    return SearchResponseList(results)
-    }
-   override suspend fun search(query: String, page: Int): SearchResponseList? {
-    val encodedQuery = URLEncoder.encode(query, "UTF-8")
-    val url = "$mainUrl/search?q=$encodedQuery&page=$page"
-
-    val doc = app.get(url).document
-
-    val results = doc.select("div.col-lg-auto").mapNotNull {
-        it.toSearchResponse()
-    }
-
-    return newSearchResponseList(results)
-}
-
-override suspend fun search(query: String, page: Int): SearchResponseList? {
-    val results = mutableListOf<SearchResponse>()
-    var currentPage = page
-    while (true) {
-        val url = "$mainUrl/search?q=${query.encodeURL()}&page=$currentPage"
-        val doc = app.get(url).document
-        val pageResults = doc.select("div.col-lg-auto.col-md-4.col-6.mb-12").mapNotNull {
-            it.toSearchResponse()
-        }
-        if (pageResults.isEmpty()) break
-        results.addAll(pageResults)
-        currentPage++
-    }
-    return SearchResponseList(results)
-}*/
-
-override suspend fun search(query: String, page: Int): SearchResponseList? {
-    val url = "$mainUrl/search?q=${URLEncoder.encode(query, "UTF-8")}&page=$page"
-    val doc = app.get(url).document
-
-    val results = doc.select("div.col-lg-auto.col-md-4.col-6.mb-12").mapNotNull {
-        it.toSearchResponse()
-    }
-
-    return SearchResponseList(results)
-}
 
     private fun String.getIntFromText(): Int? {
         return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
