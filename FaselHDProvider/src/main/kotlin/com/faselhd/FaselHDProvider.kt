@@ -275,14 +275,12 @@ override suspend fun loadLinks(
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // Collect download links (any /file/ link)
     val downloadCandidates = doc.select("a[href*=\"/file/\"]")
         .mapNotNull { element ->
             val href = element.attr("href").takeIf { it.isNotBlank() }
             href?.let { it to "download" }
         }
 
-    // Collect iframe candidate
     val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
         ?.attr("src")
         ?.takeIf { it.isNotBlank() }
@@ -290,13 +288,12 @@ override suspend fun loadLinks(
 
     val candidates = (downloadCandidates + listOfNotNull(iframeCandidate))
 
-    println("FaselHD → Candidates found: ${candidates.joinToString { "${it.second}: ${it.first}" }}")
+    println("FaselHD → Candidates: ${candidates.joinToString { "${it.second}: ${it.first}" }}")
 
     candidates.apmap { (url, method) ->
         when (method) {
             "download" -> runCatching {
-                println("FaselHD → Download branch, URL = $url")
-
+                println("FaselHD → Download URL = $url")
                 callback(
                     newExtractorLink(
                         source = name,
@@ -308,52 +305,59 @@ override suspend fun loadLinks(
                     }
                 )
             }.onFailure { e ->
-                println("FaselHD → Download branch failed: ${e.message}")
-                e.printStackTrace()
+                println("FaselHD → Download failed: ${e.message}")
             }
 
             "iframe" -> runCatching {
-                println("FaselHD → Iframe branch, URL = $url")
+                println("FaselHD → Iframe URL = $url")
 
-                val result = WebViewResolver(Regex("""\.m3u8(\?.*)?$"""))
-                    .resolveUsingWebView(
-                        requestCreator("GET", url, referer = mainUrl)
-                    )
+                val result = WebViewResolver(
+                    // only accept real video manifests
+                    Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
+                ).resolveUsingWebView(
+                    requestCreator("GET", url, referer = mainUrl)
+                )
 
                 val m3u8Url = result?.toString()
 
-                if (!m3u8Url.isNullOrBlank()) {
-                    println("FaselHD → Found .m3u8 URL = $m3u8Url")
+                if (!m3u8Url.isNullOrBlank() && m3u8Url.contains("scdns.io")) {
+                    println("FaselHD → Found valid .m3u8 = $m3u8Url")
 
                     M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
                         .forEach { link ->
-                            println("FaselHD → Generated m3u8 link = ${link.url}")
+                            println("FaselHD → M3U8 stream = ${link.url}")
                             callback(link)
                         }
                 } else {
-                    println("FaselHD → No .m3u8 URL resolved from iframe. Trying raw fetch...")
+                    println("FaselHD → No valid scdns.io .m3u8 found. Checking raw HTML...")
 
-                    val iframeResponse = app.get(
+                    val iframeDoc = app.get(
                         url,
                         referer = mainUrl,
                         interceptor = cfKiller,
                         timeout = 120
-                    )
+                    ).document
 
-                    println("FaselHD → Iframe raw response code: ${iframeResponse.code}")
-                    println("FaselHD → Iframe raw body (first 2000 chars):")
-                    println(iframeResponse.text.take(2000))
+                    val html = iframeDoc.outerHtml()
+                    val fallbackM3u8 = Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
+                        .find(html)?.value
+
+                    if (!fallbackM3u8.isNullOrBlank()) {
+                        println("FaselHD → Fallback found .m3u8 = $fallbackM3u8")
+
+                        M3u8Helper.generateM3u8(name, fallbackM3u8, referer = mainUrl)
+                            .forEach(callback)
+                    } else {
+                        println("FaselHD → Still no .m3u8 in iframe HTML.")
+                    }
                 }
             }.onFailure { e ->
-                println("FaselHD → Iframe branch failed: ${e.message}")
-                e.printStackTrace()
+                println("FaselHD → Iframe failed: ${e.message}")
             }
         }
     }
 
     return true
 }
-
-
 
 }
