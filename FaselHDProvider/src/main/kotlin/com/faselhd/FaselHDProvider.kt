@@ -186,7 +186,7 @@ class FaselHD : MainAPI() {
         }
     }
 
-   override suspend fun loadLinks(
+  /* override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -232,6 +232,54 @@ class FaselHD : MainAPI() {
             }
         }
         return true
+    }*/
+    override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    var doc = app.get(data).document
+    if (doc.select("title").text() == "Just a moment...") {
+        doc = app.get(data, interceptor = cfKiller).document
     }
+
+    val candidates = listOfNotNull(
+        doc.selectFirst(".downloadLinks a")?.attr("href")?.let { it to "download" },
+        doc.selectFirst("iframe[name=\"player_iframe\"]")?.attr("src")?.let { it to "iframe" }
+    )
+
+    candidates.apmap { (url, method) ->
+        when (method) {
+            "download" -> runCatching {
+                val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
+                val link = player.selectFirst("div.dl-link a")?.attr("href") ?: return@runCatching
+                callback(
+                    newExtractorLink(
+                        source = name,
+                        name = "$name Download Source",
+                        url = link
+                    ).apply {
+                        referer = mainUrl
+                        quality = quality ?: Qualities.Unknown.value
+                    }
+                )
+            }
+
+            "iframe" -> runCatching {
+                val webView = WebViewResolver(Regex("""master\.m3u8"""))
+                    .resolveUsingWebView(requestCreator("GET", url, referer = mainUrl))
+                    .firstOrNull()
+
+                val m3u8Url = webView?.url ?: return@runCatching
+                M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
+                    .forEach(callback)
+            }
+        }
+    }
+
+    return true
+}
+
 
 }
