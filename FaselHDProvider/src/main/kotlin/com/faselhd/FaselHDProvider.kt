@@ -204,7 +204,7 @@ class FaselHD : MainAPI() {
                     url = link,
                ){ 
                     this.referer = this@FaselHD.mainUrl
-                    this.quality = quality.value
+                    this.quality = quality
                }
                 )
 
