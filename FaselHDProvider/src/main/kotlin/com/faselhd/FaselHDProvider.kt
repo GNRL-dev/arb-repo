@@ -336,16 +336,16 @@ override suspend fun loadLinks(
                         newExtractorLink(
                             source = name,
                             name = "$name HLS",
-                            url = m3u8Url,
-                            referer = mainUrl,
-                            isM3u8 = true,
+                            url = m3u8Url,)
+                        {    referer = mainUrl,
+                         //   isM3u8 = true,
                             quality = Qualities.Unknown.value,
                             headers = mapOf(
                                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
                                 "Origin" to mainUrl,
                                 "Referer" to mainUrl
                             )
-                        )
+                        }
                     )
                 } else {
                     println("FaselHD → No valid scdns.io .m3u8 from WebView. Scanning raw HTML...")
@@ -368,16 +368,16 @@ override suspend fun loadLinks(
                             newExtractorLink(
                                 source = name,
                                 name = "$name HLS (Fallback)",
-                                url = fallbackM3u8,
-                                referer = mainUrl,
-                                isM3u8 = true,
+                                url = fallbackM3u8,)
+                            {  referer = mainUrl,
+                             //   isM3u8 = true,
                                 quality = Qualities.Unknown.value,
                                 headers = mapOf(
                                     "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
                                     "Origin" to mainUrl,
                                     "Referer" to mainUrl
                                 )
-                            )
+                            }
                         )
                     } else {
                         println("FaselHD → Still no .m3u8 in iframe HTML.")
