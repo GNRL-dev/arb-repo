@@ -1,4 +1,4 @@
-٨package com.faselhd
+package com.faselhd
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.nicehttp.requestCreator
