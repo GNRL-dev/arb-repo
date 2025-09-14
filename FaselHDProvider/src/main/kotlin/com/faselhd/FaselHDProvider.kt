@@ -202,9 +202,11 @@ class FaselHD : MainAPI() {
                     source = this.name,
                     name = this.name + " Download Source",
                     url = link,
-                    referer = this.mainUrl,
-                    quality = Qualities.Unknown.value
-                    )
+              )
+                    {
+                    this.referer = this@faselhd.mainUrl
+                    this.quality = quality.value
+                    }
                     )
 
             } else if (method == "iframe") {
