@@ -188,7 +188,7 @@ class FaselHD : MainAPI() {
             if (method == "download") {
                 val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
                 callback.invoke(
-                    newExtractorLink(
+                      ExtractorLink(
                         this.name,
                         this.name + " Download Source",
                         player.select("div.dl-link a").attr("href"),
