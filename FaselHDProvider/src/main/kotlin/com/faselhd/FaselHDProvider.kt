@@ -266,15 +266,16 @@ class FaselHD : MainAPI() {
                 )
             }
 
-            "iframe" -> runCatching {
-                val webView = WebViewResolver(Regex("""master\.m3u8"""))
-                    .resolveUsingWebView(requestCreator("GET", url, referer = mainUrl))
-                    .firstOrNull()
+           "iframe" -> runCatching {
+    val webView = WebViewResolver(Regex("""master\.m3u8"""))
+        .resolveUsingWebView(requestCreator("GET", url, referer = mainUrl))
+        ?.first
 
-                val m3u8Url = webView?.url ?: return@runCatching
-                M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
-                    .forEach(callback)
-            }
+    val m3u8Url = webView?.url ?: return@runCatching
+    M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
+        .forEach(callback)
+}
+
         }
     }
 
