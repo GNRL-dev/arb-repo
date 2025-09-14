@@ -278,9 +278,9 @@ override suspend fun loadLinks(
             name = link.name,
             url = link.url
         ) {
-            this.referer = link.referer
-            this.isM3u8 = link.isM3u8
-            this.quality = quality
+        referer = link.referer
+        isM3u8 = link.isM3u8
+        quality = quality
         }
     )
 }
