@@ -9,6 +9,8 @@ import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.SearchResponse
+import com.lagradost.cloudstream3.SearchResponseList
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
@@ -58,16 +60,18 @@ class Akwam : MainAPI() {
             it.toSearchResponse()
         }
     }*/
-    override suspend fun search(query: String, page: Int = 1): List<SearchResponse> {
-    // Make sure page is >= 1
+    override suspend fun search(query: String, page: Int): SearchResponseList? {
     val pageParam = if (page > 1) "&page=$page" else ""
     val encodedQuery = URLEncoder.encode(query, "UTF-8")
     val url = "$mainUrl/search?q=$encodedQuery$pageParam"
-  
+
     val doc = app.get(url).document
-    return doc.select("div.col-lg-auto")
+    val results = doc.select("div.col-lg-auto")
         .mapNotNull { it.toSearchResponse() }
-}
+
+    // Wrap the list in SearchResponseList
+    return SearchResponseList(results)
+    }
 
     private fun String.getIntFromText(): Int? {
         return Regex("""\d+""").find(this)?.groupValues?.firstOrNull()?.toIntOrNull()
