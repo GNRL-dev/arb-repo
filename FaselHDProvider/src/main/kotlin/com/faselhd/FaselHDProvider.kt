@@ -1,7 +1,7 @@
 package com.faselhd
 
 import com.lagradost.cloudstream3.*
-//import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.nicehttp.requestCreator
 import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.M3u8Helper
