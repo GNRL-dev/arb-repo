@@ -242,7 +242,7 @@ class FaselHD : MainAPI() {
         }
         return true
     }*/
- override suspend fun loadLinks(
+override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -253,22 +253,16 @@ class FaselHD : MainAPI() {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Extract all player links from onclick attributes
-    val playerLinks: List<String> = doc.select("li[onclick]").mapNotNull { li ->
-        val onclick = li.attr("onclick")
-        Regex("https?://[^']+").find(onclick)?.value
-    }
+    // 🔹 Get the iframe URL
+    val iframeUrl = doc.select("iframe[name=player_iframe]").attr("src")
+    if (iframeUrl.isNotBlank()) {
+        val resolved = WebViewResolver(Regex("""\.m3u8"""))
+            .resolveUsingWebView(
+                requestCreator("GET", iframeUrl, referer = mainUrl),
+                timeout = 30000 // wait up to 30s to allow ads to finish
+            )
 
-    // 🔹 Resolve each link via WebViewResolver
-    for (url in playerLinks) {
-        val resolved: Pair<okhttp3.Request?, List<okhttp3.Request>> =
-            WebViewResolver(Regex("""\.m3u8"""))
-                .resolveUsingWebView(
-                    requestCreator("GET", url, referer = mainUrl)
-                )
-
-        val m3u8Url: String? = resolved.first?.url?.toString()
-
+        val m3u8Url = resolved.first?.url?.toString()
         if (m3u8Url != null && m3u8Url.endsWith(".m3u8")) {
             val links = M3u8Helper.generateM3u8(
                 this.name,
@@ -279,7 +273,7 @@ class FaselHD : MainAPI() {
         }
     }
 
-    // 🔹 Extract download links (backup)
+    // 🔹 Extract backup download links if available
     doc.select(".downloadLinks a").forEach { link ->
         val href = link.attr("href")
         if (href.isNotEmpty()) {
