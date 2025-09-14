@@ -60,21 +60,33 @@ class Akwam : MainAPI() {
             it.toSearchResponse()
         }
     }*/
-    suspend fun searchPage(query: String, page: Int): Pair<List<SearchResponse>, Boolean> {
-    val url = if (page == 1) {
-        "$mainUrl/search?q=$query"
-    } else {
-        "$mainUrl/search?q=$query&page=$page"
-    }
+    
+override suspend fun search(query: String): List<SearchResponse> {
+    val results = mutableListOf<SearchResponse>()
+    var page = 1
+    var hasNextPage: Boolean
 
-    val doc = app.get(url).document
+    do {
+        val url = if (page == 1) {
+            "$mainUrl/search?q=$query"
+        } else {
+            "$mainUrl/search?q=$query&page=$page"
+        }
 
-    val results = doc.select("div.col-lg-auto")
-        .mapNotNull { it.toSearchResponse() }
+        val doc = app.get(url).document
 
-    val hasNextPage = doc.selectFirst("a.page-link[rel=next]") != null
+        // collect results on this page
+        val pageResults = doc.select("div.col-lg-auto")
+            .mapNotNull { it.toSearchResponse() }
+        results.addAll(pageResults)
 
-    return Pair(results, hasNextPage)
+        // check if there’s a next page
+        hasNextPage = doc.selectFirst("a.page-link[rel=next]") != null
+        page++
+
+    } while (hasNextPage)
+
+    return results
 }
 
 
