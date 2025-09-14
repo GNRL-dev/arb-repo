@@ -242,7 +242,7 @@ class FaselHD : MainAPI() {
         }
         return true
     }*/
-    override suspend fun loadLinks(
+  override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -253,7 +253,7 @@ class FaselHD : MainAPI() {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Extract all onclick URLs (player_iframe.location.href)
+    // 🔹 Extract all onclick URLs
     val playerLinks = doc.select("li[onclick]").mapNotNull { li ->
         val onclick = li.attr("onclick")
         Regex("https?://[^']+").find(onclick)?.value
@@ -265,14 +265,17 @@ class FaselHD : MainAPI() {
             Regex("""\.m3u8""")
         ).resolveUsingWebView(
             requestCreator("GET", url, referer = mainUrl)
-        ).firstOrNull()
+        )
 
-        if (resolved?.url?.endsWith(".m3u8") == true) {
-            M3u8Helper.generateM3u8(
-                this.name,
-                resolved.url,
-                referer = mainUrl
-            ).forEach(callback)
+        // resolved is a List<WebViewResolver.WebViewResolve>
+        resolved.forEach { res ->
+            if (res.url?.endsWith(".m3u8") == true) {
+                M3u8Helper.generateM3u8(
+                    this.name,
+                    res.url,
+                    referer = mainUrl
+                ).forEach(callback)
+            }
         }
     }
 
@@ -295,5 +298,6 @@ class FaselHD : MainAPI() {
 
     return true
 }
+
 
 }
