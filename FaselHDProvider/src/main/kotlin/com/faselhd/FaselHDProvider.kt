@@ -203,15 +203,6 @@ class FaselHD : MainAPI() {
         ).apmap { (url, method) ->
             if (method == "download") {
                 val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
-               /* callback.invoke(
-                      ExtractorLink(
-                        this.name,
-                        this.name + " Download Source",
-                        player.select("div.dl-link a").attr("href"),
-                        this.mainUrl,
-                        Qualities.Unknown.value
-                    )
-                )*/
                 val link = player.select("div.dl-link a").attr("href")
                 callback.invoke(
                     newExtractorLink(
@@ -242,112 +233,5 @@ class FaselHD : MainAPI() {
         }
         return true
     }
-/* override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    var doc = app.get(data).document
-    if (doc.select("title").text() == "Just a moment...") {
-        doc = app.get(data, interceptor = cfKiller).document
-    }
-
-    // ========== 1. Direct quality buttons (preferred) ==========
-    doc.select("button.hd_btn").forEach { btn ->
-        val url = btn.attr("data-url")
-        val qualityText = btn.text()
-
-        if (url.endsWith(".m3u8")) {
-            val quality = when {
-                qualityText.contains("1080", true) -> Qualities.P1080.value
-                qualityText.contains("720", true) -> Qualities.P720.value
-                qualityText.contains("480", true) -> Qualities.P480.value
-                qualityText.contains("360", true) -> Qualities.P360.value
-                else -> Qualities.Unknown.value
-            }
-
- M3u8Helper.generateM3u8(
-    this.name,
-    url,
-    referer = mainUrl
-).forEach { link ->
-    callback.invoke(
-        newExtractorLink(
-            source = link.source,
-            name = link.name,
-            url = link.url
-        //    isM3u8 = link.isM3u8
-        ) {
-        this.referer = link.referer
-      //  this.isM3u8 = link.isM3u8
-        this.quality = quality
-        }
-    )
-}
-
-
-        }
-    }
-
-    // ========== 2. Fallback: onclick servers ==========
-    val serverLinks = mutableListOf<Pair<String, String>>() // (serverName, url)
-
-    doc.select("li[onclick]").forEachIndexed { index, li ->
-        val onclick = li.attr("onclick")
-        val url = Regex("https?://[^']+").find(onclick)?.value
-        val name = li.text().ifBlank { "Server #${index + 1}" }
-        if (url != null) serverLinks.add(name to url)
-    }
-
-    val iframeUrl = doc.select("iframe[name=player_iframe]").attr("src")
-    if (iframeUrl.isNotBlank()) {
-        serverLinks.add("Default Server" to iframeUrl)
-    }
-
-    for ((serverName, url) in serverLinks) {
-        val resolved = WebViewResolver(Regex("""\.m3u8"""))
-            .resolveUsingWebView(url, referer = mainUrl)
-
-        val m3u8Url: String? = resolved.first?.url?.toString()
-        if (m3u8Url != null && m3u8Url.endsWith(".m3u8")) {
-            M3u8Helper.generateM3u8(
-                serverName,
-                m3u8Url,
-                referer = mainUrl
-            ).forEach(callback)
-        }
-    }
-
-    // ========== 3. Backup: download links ==========
-    doc.select(".downloadLinks a").forEach { link ->
-        val href = link.attr("href")
-        val text = link.text()
-
-        if (href.isNotEmpty()) {
-            val quality = when {
-                text.contains("1080", true) || href.contains("1080") -> Qualities.P1080.value
-                text.contains("720", true) || href.contains("720") -> Qualities.P720.value
-                text.contains("480", true) || href.contains("480") -> Qualities.P480.value
-                text.contains("360", true) || href.contains("360") -> Qualities.P360.value
-                else -> Qualities.Unknown.value
-            }
-
-            callback.invoke(
-                newExtractorLink(
-                    source = this.name,
-                    name = this.name + " Download",
-                    url = href,
-                ) {
-                    this.referer = this@FaselHD.mainUrl
-                    this.quality = quality
-                }
-            )
-        }
-    }
-
-    return true
-}*/
-
 
 }
