@@ -289,8 +289,9 @@ override suspend fun loadLinks(
                         requestCreator("GET", url, referer = mainUrl)
                     )
 
-                if (result != null) {
-                    val m3u8Url = result.url.toString()
+                val m3u8Url = result?.toString()
+
+                if (!m3u8Url.isNullOrBlank()) {
                     println("FaselHD → Found .m3u8 URL = $m3u8Url")
 
                     M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
@@ -310,7 +311,6 @@ override suspend fun loadLinks(
 
     return true
 }
-
 
 
 }
