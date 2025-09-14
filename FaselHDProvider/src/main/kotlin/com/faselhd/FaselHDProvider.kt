@@ -186,7 +186,7 @@ class FaselHD : MainAPI() {
         }
     }
 
-    override suspend fun loadLinks(
+ /*   override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -241,5 +241,59 @@ class FaselHD : MainAPI() {
             }
         }
         return true
+    }*/
+    override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    var doc = app.get(data).document
+    if (doc.select("title").text() == "Just a moment...") {
+        doc = app.get(data, interceptor = cfKiller).document
     }
+
+    // 🔹 Extract all onclick URLs (player_iframe.location.href)
+    val playerLinks = doc.select("li[onclick]").mapNotNull { li ->
+        val onclick = li.attr("onclick")
+        Regex("https?://[^']+").find(onclick)?.value
+    }
+
+    // 🔹 Resolve each link and extract M3U8 streams
+    playerLinks.apmap { url ->
+        val resolved = WebViewResolver(
+            Regex("""\.m3u8""")
+        ).resolveUsingWebView(
+            requestCreator("GET", url, referer = mainUrl)
+        ).firstOrNull()
+
+        if (resolved?.url?.endsWith(".m3u8") == true) {
+            M3u8Helper.generateM3u8(
+                this.name,
+                resolved.url,
+                referer = mainUrl
+            ).forEach(callback)
+        }
+    }
+
+    // 🔹 Extract download links (backup sources)
+    doc.select(".downloadLinks a").forEach { link ->
+        val href = link.attr("href")
+        if (href.isNotEmpty()) {
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = this.name + " Download",
+                    url = href,
+                ) {
+                    this.referer = this@FaselHD.mainUrl
+                    this.quality = Qualities.Unknown.value
+                }
+            )
+        }
+    }
+
+    return true
+}
+
 }
