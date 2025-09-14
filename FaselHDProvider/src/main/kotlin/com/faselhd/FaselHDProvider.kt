@@ -267,13 +267,23 @@ override suspend fun loadLinks(
                 else -> Qualities.Unknown.value
             }
 
-            M3u8Helper.generateM3u8(
-                this.name,
-                url,
-                referer = mainUrl
-            ).forEach { link ->
-                callback.invoke(link.copy(quality = quality))
-            }
+           M3u8Helper.generateM3u8(
+    this.name,
+    url,
+    referer = mainUrl
+).forEach { link ->
+    callback.invoke(
+        newExtractorLink(
+            source = link.source,
+            name = link.name,
+            url = link.url,
+            referer = link.referer,
+            quality = quality,
+            isM3u8 = link.isM3u8
+        )
+    )
+}
+
         }
     }
 
