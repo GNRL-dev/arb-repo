@@ -233,49 +233,63 @@ class FaselHD : MainAPI() {
         }
         return true
     }*/
-    override suspend fun loadLinks(
+   override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
+    // Step 1: fetch main document
     var doc = app.get(data).document
     if (doc.select("title").text() == "Just a moment...") {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
+    // Step 2: collect candidate URLs safely
     val candidates = listOfNotNull(
-        doc.selectFirst(".downloadLinks a")?.attr("href")?.let { it to "download" },
-        doc.selectFirst("iframe[name=\"player_iframe\"]")?.attr("src")?.let { it to "iframe" }
+        doc.selectFirst(".downloadLinks a")?.attr("href")?.takeIf { it.isNotBlank() }?.let { it to "download" },
+        doc.selectFirst("iframe[name=\"player_iframe\"]")?.attr("src")?.takeIf { it.isNotBlank() }?.let { it to "iframe" }
     )
 
+    // Step 3: process each candidate asynchronously
     candidates.apmap { (url, method) ->
         when (method) {
             "download" -> runCatching {
-                val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
-                val link = player.selectFirst("div.dl-link a")?.attr("href") ?: return@runCatching
-                callback(
-                    newExtractorLink(
-                        source = name,
-                        name = "$name Download Source",
-                        url = link
-                    ).apply {
-                        referer = mainUrl
-                        quality = quality ?: Qualities.Unknown.value
-                    }
-                )
-            }
+                val player = app.post(
+                    url,
+                    interceptor = cfKiller,
+                    referer = mainUrl,
+                    timeout = 120
+                ).document
 
-           "iframe" -> runCatching {
-    val webView = WebViewResolver(Regex("""master\.m3u8"""))
-        .resolveUsingWebView(requestCreator("GET", url, referer = mainUrl))
-        ?.first
+                val link = player.selectFirst("div.dl-link a")?.attr("href")
+                if (!link.isNullOrBlank()) {
+                    callback(
+                        newExtractorLink(
+                            source = name,
+                            name = "$name Download Source",
+                            url = link
+                        ).apply {
+                            referer = mainUrl
+                            quality = quality ?: Qualities.Unknown.value
+                        }
+                    )
+                }
+            }.onFailure { it.printStackTrace() }
 
-    val m3u8Url = webView?.url ?: return@runCatching
-    M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
-        .forEach(callback)
-}
+            "iframe" -> runCatching {
+                val webView = WebViewResolver(Regex("""master\.m3u8"""))
+                    .resolveUsingWebView(
+                        requestCreator("GET", url, referer = mainUrl)
+                    )
+                    ?.first
 
+                val m3u8Url = webView?.url?.toString()
+                if (!m3u8Url.isNullOrBlank()) {
+                    M3u8Helper.generateM3u8(name, m3u8Url, referer = mainUrl)
+                        .forEach(callback)
+                }
+            }.onFailure { it.printStackTrace() }
         }
     }
 
