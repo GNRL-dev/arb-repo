@@ -69,17 +69,33 @@ class FaselHD : MainAPI() {
         return newHomePageResponse(request.name, list)
     }
 
-    override suspend fun search(query: String): List<SearchResponse> {
-        val q = query.replace(" ", "+")
-        var d = app.get("$mainUrl/?s=$q").document
-        if (d.select("title").text() == "Just a moment...") {
-            d = app.get("$alternativeUrl/?s=$q", interceptor = cfKiller, timeout = 120).document
+ override suspend fun search(query: String): List<SearchResponse> {
+    val q = query.replace(" ", "+")
+    val results = mutableListOf<SearchResponse>()
+    var page = 1
+
+    while (true) {
+        // Build URL using page number
+        val url = "$mainUrl/page/$page?s=$q"
+        var d = app.get(url).document
+
+        // fallback if blocked by Cloudflare etc.
+        if (d.select("title").text().contains("Just a moment...")) {
+            d = app.get("$alternativeUrl/page/$page?s=$q", interceptor = cfKiller, timeout = 120).document
         }
-        return d.select("div[id=\"postList\"] div[class=\"col-xl-2 col-lg-2 col-md-3 col-sm-3\"]")
-            .mapNotNull {
-                it.toSearchResponse()
-            }
+
+        val items = d.select("div[id=\"postList\"] div[class=\"col-xl-2 col-lg-2 col-md-3 col-sm-3\"]")
+                     .mapNotNull { it.toSearchResponse() }
+
+        if (items.isEmpty()) break  // no more results => stop
+
+        results += items
+        page++
     }
+
+    return results
+}
+
 
     override suspend fun load(url: String): LoadResponse {
         var doc = app.get(url).document
