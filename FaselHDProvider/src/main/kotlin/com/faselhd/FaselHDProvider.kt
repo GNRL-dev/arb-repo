@@ -275,14 +275,14 @@ override suspend fun loadLinks(
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // Collect download candidates
+    // 🔹 Collect download candidates
     val downloadCandidates = doc.select("a[href*=\"/file/\"]")
         .mapNotNull { element ->
             val href = element.attr("href").takeIf { it.isNotBlank() }
             href?.let { it to "download" }
         }
 
-    // Collect iframe candidate
+    // 🔹 Collect iframe candidate
     val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
         ?.attr("src")
         ?.takeIf { it.isNotBlank() }
@@ -294,7 +294,9 @@ override suspend fun loadLinks(
 
     candidates.apmap { (url, method) ->
         when (method) {
-            // 🔹 Download link branch
+            // =======================
+            // DOWNLOAD LINK HANDLING
+            // =======================
             "download" -> runCatching {
                 println("FaselHD → Download URL = $url")
 
@@ -312,12 +314,13 @@ override suspend fun loadLinks(
                 println("FaselHD → Download failed: ${e.message}")
             }
 
-            // 🔹 Iframe (video player) branch
+            // =======================
+            // IFRAME PLAYER HANDLING
+            // =======================
             "iframe" -> runCatching {
                 println("FaselHD → Iframe URL = $url")
 
                 val result = WebViewResolver(
-                    // only accept real CDN video manifests
                     Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
                 ).resolveUsingWebView(
                     requestCreator("GET", url, referer = mainUrl)
@@ -328,19 +331,22 @@ override suspend fun loadLinks(
                 if (!m3u8Url.isNullOrBlank() && m3u8Url.contains("scdns.io")) {
                     println("FaselHD → Found valid .m3u8 = $m3u8Url")
 
-                    M3u8Helper.generateM3u8(
-                        name,
-                        m3u8Url,
-                        referer = mainUrl,
-                        headers = mapOf(
-                            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                            "Origin" to mainUrl,
-                            "Referer" to mainUrl
+                    // ✅ Return directly instead of M3u8Helper
+                    callback(
+                        newExtractorLink(
+                            source = name,
+                            name = "$name HLS",
+                            url = m3u8Url,
+                            referer = mainUrl,
+                            isM3u8 = true,
+                            quality = Qualities.Unknown.value,
+                            headers = mapOf(
+                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+                                "Origin" to mainUrl,
+                                "Referer" to mainUrl
+                            )
                         )
-                    ).forEach { link ->
-                        println("FaselHD → Stream = ${link.url}")
-                        callback(link)
-                    }
+                    )
                 } else {
                     println("FaselHD → No valid scdns.io .m3u8 from WebView. Scanning raw HTML...")
 
@@ -358,16 +364,21 @@ override suspend fun loadLinks(
                     if (!fallbackM3u8.isNullOrBlank()) {
                         println("FaselHD → Fallback found .m3u8 = $fallbackM3u8")
 
-                        M3u8Helper.generateM3u8(
-                            name,
-                            fallbackM3u8,
-                            referer = mainUrl,
-                            headers = mapOf(
-                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                                "Origin" to mainUrl,
-                                "Referer" to mainUrl
+                        callback(
+                            newExtractorLink(
+                                source = name,
+                                name = "$name HLS (Fallback)",
+                                url = fallbackM3u8,
+                                referer = mainUrl,
+                                isM3u8 = true,
+                                quality = Qualities.Unknown.value,
+                                headers = mapOf(
+                                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+                                    "Origin" to mainUrl,
+                                    "Referer" to mainUrl
+                                )
                             )
-                        ).forEach(callback)
+                        )
                     } else {
                         println("FaselHD → Still no .m3u8 in iframe HTML.")
                     }
