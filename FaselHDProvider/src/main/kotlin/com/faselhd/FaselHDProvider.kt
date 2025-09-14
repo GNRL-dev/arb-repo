@@ -336,8 +336,8 @@ override suspend fun loadLinks(
                         newExtractorLink(
                             source = name,
                             name = "$name HLS",
-                            url = m3u8Url,)
-                        {    referer = mainUrl,
+                            url = m3u8Url
+                        ){    referer = mainUrl,
                          //   isM3u8 = true,
                             quality = Qualities.Unknown.value,
                             headers = mapOf(
@@ -368,7 +368,8 @@ override suspend fun loadLinks(
                             newExtractorLink(
                                 source = name,
                                 name = "$name HLS (Fallback)",
-                                url = fallbackM3u8,)
+                                url = fallbackM3u8
+                            )
                             {  referer = mainUrl,
                              //   isM3u8 = true,
                                 quality = Qualities.Unknown.value,
