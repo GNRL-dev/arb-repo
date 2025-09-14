@@ -242,7 +242,7 @@ class FaselHD : MainAPI() {
         }
         return true
     }*/
-  override suspend fun loadLinks(
+ override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -253,33 +253,34 @@ class FaselHD : MainAPI() {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Extract all onclick URLs
-    val playerLinks = doc.select("li[onclick]").mapNotNull { li ->
+    // 🔹 Extract all player links from onclick attributes
+    val playerLinks: List<String> = doc.select("li[onclick]").mapNotNull { li ->
         val onclick = li.attr("onclick")
         Regex("https?://[^']+").find(onclick)?.value
     }
 
     // 🔹 Resolve each link and extract M3U8 streams
-    playerLinks.apmap { url ->
-        val resolved = WebViewResolver(
+    for (url: String in playerLinks) {
+        val resolved: List<WebViewResolver.WebViewResolve> = WebViewResolver(
             Regex("""\.m3u8""")
         ).resolveUsingWebView(
             requestCreator("GET", url, referer = mainUrl)
         )
 
-        // resolved is a List<WebViewResolver.WebViewResolve>
-        resolved.forEach { res ->
-            if (res.url?.endsWith(".m3u8") == true) {
-                M3u8Helper.generateM3u8(
+        for (res: WebViewResolver.WebViewResolve in resolved) {
+            val streamUrl = res.url
+            if (streamUrl != null && streamUrl.endsWith(".m3u8")) {
+                val links = M3u8Helper.generateM3u8(
                     this.name,
-                    res.url,
+                    streamUrl,
                     referer = mainUrl
-                ).forEach(callback)
+                )
+                links.forEach { link -> callback.invoke(link) }
             }
         }
     }
 
-    // 🔹 Extract download links (backup sources)
+    // 🔹 Extract download links as backup
     doc.select(".downloadLinks a").forEach { link ->
         val href = link.attr("href")
         if (href.isNotEmpty()) {
@@ -298,6 +299,5 @@ class FaselHD : MainAPI() {
 
     return true
 }
-
 
 }
