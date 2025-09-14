@@ -174,7 +174,7 @@ class FaselHD : MainAPI() {
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ) {
+    ): Boolean {
         var doc = app.get(data).document
         if (doc.select("title").text() == "Just a moment...") {
             doc = app.get(data, interceptor = cfKiller).document
