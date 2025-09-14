@@ -253,30 +253,73 @@ override suspend fun loadLinks(
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Extract the iframe URL
+    // ========== 1. Direct quality buttons (preferred) ==========
+    doc.select("button.hd_btn").forEach { btn ->
+        val url = btn.attr("data-url")
+        val qualityText = btn.text()
+
+        if (url.endsWith(".m3u8")) {
+            val quality = when {
+                qualityText.contains("1080", true) -> Qualities.P1080.value
+                qualityText.contains("720", true) -> Qualities.P720.value
+                qualityText.contains("480", true) -> Qualities.P480.value
+                qualityText.contains("360", true) -> Qualities.P360.value
+                else -> Qualities.Unknown.value
+            }
+
+            M3u8Helper.generateM3u8(
+                this.name,
+                url,
+                referer = mainUrl
+            ).forEach { link ->
+                callback.invoke(link.copy(quality = quality))
+            }
+        }
+    }
+
+    // ========== 2. Fallback: onclick servers ==========
+    val serverLinks = mutableListOf<Pair<String, String>>() // (serverName, url)
+
+    doc.select("li[onclick]").forEachIndexed { index, li ->
+        val onclick = li.attr("onclick")
+        val url = Regex("https?://[^']+").find(onclick)?.value
+        val name = li.text().ifBlank { "Server #${index + 1}" }
+        if (url != null) serverLinks.add(name to url)
+    }
+
     val iframeUrl = doc.select("iframe[name=player_iframe]").attr("src")
     if (iframeUrl.isNotBlank()) {
-        val resolved: Pair<okhttp3.Request?, List<okhttp3.Request>> =
-            WebViewResolver(Regex("""\.m3u8"""))
-                .resolveUsingWebView(
-                    iframeUrl,
-                    referer = mainUrl
-                )
+        serverLinks.add("Default Server" to iframeUrl)
+    }
+
+    for ((serverName, url) in serverLinks) {
+        val resolved = WebViewResolver(Regex("""\.m3u8"""))
+            .resolveUsingWebView(url, referer = mainUrl)
 
         val m3u8Url: String? = resolved.first?.url?.toString()
         if (m3u8Url != null && m3u8Url.endsWith(".m3u8")) {
             M3u8Helper.generateM3u8(
-                this.name,
+                serverName,
                 m3u8Url,
                 referer = mainUrl
             ).forEach(callback)
         }
     }
 
-    // 🔹 Extract download links as backup
+    // ========== 3. Backup: download links ==========
     doc.select(".downloadLinks a").forEach { link ->
         val href = link.attr("href")
+        val text = link.text()
+
         if (href.isNotEmpty()) {
+            val quality = when {
+                text.contains("1080", true) || href.contains("1080") -> Qualities.P1080.value
+                text.contains("720", true) || href.contains("720") -> Qualities.P720.value
+                text.contains("480", true) || href.contains("480") -> Qualities.P480.value
+                text.contains("360", true) || href.contains("360") -> Qualities.P360.value
+                else -> Qualities.Unknown.value
+            }
+
             callback.invoke(
                 newExtractorLink(
                     source = this.name,
@@ -284,7 +327,7 @@ override suspend fun loadLinks(
                     url = href,
                 ) {
                     this.referer = this@FaselHD.mainUrl
-                    this.quality = Qualities.Unknown.value
+                    this.quality = quality
                 }
             )
         }
