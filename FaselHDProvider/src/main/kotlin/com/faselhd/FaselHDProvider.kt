@@ -202,12 +202,11 @@ class FaselHD : MainAPI() {
                     source = this.name,
                     name = this.name + " Download Source",
                     url = link,
-              )
-                    {
-                    this.referer = this@faselhd.mainUrl
+               ){ 
+                    this.referer = this@FaselHD.mainUrl
                     this.quality = quality.value
-                    }
-                    )
+               }
+                )
 
             } else if (method == "iframe") {
                 val webView = WebViewResolver(
