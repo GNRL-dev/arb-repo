@@ -187,7 +187,7 @@ class FaselHD : MainAPI() {
         ).apmap { (url, method) ->
             if (method == "download") {
                 val player = app.post(url, interceptor = cfKiller, referer = mainUrl, timeout = 120).document
-                callback.invoke(
+               /* callback.invoke(
                       ExtractorLink(
                         this.name,
                         this.name + " Download Source",
@@ -195,7 +195,18 @@ class FaselHD : MainAPI() {
                         this.mainUrl,
                         Qualities.Unknown.value
                     )
-                )
+                )*/
+                val link = player.select("div.dl-link a").attr("href")
+                callback.invoke(
+                    newExtractorLink(
+                    source = this.name,
+                    name = this.name + " Download Source",
+                    url = link,
+                    referer = this.mainUrl,
+                    quality = Qualities.Unknown.value
+                    )
+                    )
+
             } else if (method == "iframe") {
                 val webView = WebViewResolver(
                     Regex("""master\\.m3u8""")
