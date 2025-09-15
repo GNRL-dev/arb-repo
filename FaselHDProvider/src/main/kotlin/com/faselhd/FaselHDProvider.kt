@@ -186,7 +186,7 @@ class FaselHD : MainAPI() {
 override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
+ //   subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
     var doc = app.get(data).document
