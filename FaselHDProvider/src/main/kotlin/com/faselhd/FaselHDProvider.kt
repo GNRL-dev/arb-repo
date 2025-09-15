@@ -195,7 +195,7 @@ class FaselHD : MainAPI() {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Look for iframe
+    // 🔹 Only look for iframe (no download candidates)
     val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
         ?.attr("src")
         ?.takeIf { it.isNotBlank() }
@@ -214,7 +214,7 @@ class FaselHD : MainAPI() {
         var m3u8Url = result?.toString()
 
         if (m3u8Url.isNullOrBlank()) {
-            // 2️⃣ Fallback: parse iframe HTML
+            // 2️⃣ Fallback: scan raw HTML
             println("FaselHD → No .m3u8 from WebView. Scanning raw HTML...")
 
             val iframeDoc = app.get(
@@ -235,7 +235,7 @@ class FaselHD : MainAPI() {
                 "Referer" to mainUrl
             )
 
-            println("FaselHD → Sending HLS to player:")
+            println("✅ FaselHD → Sending HLS to player:")
             println("URL = $m3u8Url")
             println("Headers = $headers")
 
@@ -252,11 +252,12 @@ class FaselHD : MainAPI() {
                 }
             )
         } else {
-            println("FaselHD → Still no .m3u8 found in iframe.")
+            println("❌ FaselHD → Still no .m3u8 found in iframe.")
         }
     }
 
     return true
 }
+
 
 }
