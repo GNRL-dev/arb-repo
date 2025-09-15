@@ -205,13 +205,28 @@ class FaselHD : MainAPI() {
     iframeCandidate?.let { url ->
         println("FaselHD → Iframe URL = $url")
 
-        val result = WebViewResolver(
-            Regex("""https?://[^"]+\.m3u8""")   // catch all .m3u8
-        ).resolveUsingWebView(
+        val regex = Regex("""https?://[^"]+\.m3u8""")
+
+        // 1️⃣ Try with WebViewResolver
+        val result = WebViewResolver(regex).resolveUsingWebView(
             requestCreator("GET", url, referer = mainUrl)
         )
+        var m3u8Url = result?.toString()
 
-        val m3u8Url = result?.toString()
+        if (m3u8Url.isNullOrBlank()) {
+            // 2️⃣ Fallback: parse iframe HTML
+            println("FaselHD → No .m3u8 from WebView. Scanning raw HTML...")
+
+            val iframeDoc = app.get(
+                url,
+                referer = mainUrl,
+                interceptor = cfKiller,
+                timeout = 120
+            ).document
+
+            val html = iframeDoc.outerHtml()
+            m3u8Url = regex.find(html)?.value
+        }
 
         if (!m3u8Url.isNullOrBlank()) {
             val headers = mapOf(
@@ -219,6 +234,7 @@ class FaselHD : MainAPI() {
                 "Origin" to mainUrl,
                 "Referer" to mainUrl
             )
+
             println("FaselHD → Sending HLS to player:")
             println("URL = $m3u8Url")
             println("Headers = $headers")
@@ -236,7 +252,7 @@ class FaselHD : MainAPI() {
                 }
             )
         } else {
-            println("FaselHD → No .m3u8 found inside iframe.")
+            println("FaselHD → Still no .m3u8 found in iframe.")
         }
     }
 
