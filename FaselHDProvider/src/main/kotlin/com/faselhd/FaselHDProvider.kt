@@ -195,7 +195,7 @@ class FaselHD : MainAPI() {
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Only look for iframe (no download candidates)
+    // 🔹 Only collect iframe
     val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
         ?.attr("src")
         ?.takeIf { it.isNotBlank() }
@@ -225,7 +225,15 @@ class FaselHD : MainAPI() {
             ).document
 
             val html = iframeDoc.outerHtml()
+
+            // First, try plain .m3u8 regex
             m3u8Url = regex.find(html)?.value
+
+            // Then try JWPlayer config "file" field
+            if (m3u8Url.isNullOrBlank()) {
+                m3u8Url = Regex(""""file"\s*:\s*"([^"]+\.m3u8)"""")
+                    .find(html)?.groupValues?.get(1)
+            }
         }
 
         if (!m3u8Url.isNullOrBlank()) {
@@ -252,12 +260,13 @@ class FaselHD : MainAPI() {
                 }
             )
         } else {
-            println("❌ FaselHD → Still no .m3u8 found in iframe.")
+            println("❌ FaselHD → No .m3u8 found in iframe (even in JWPlayer JSON).")
         }
     }
 
     return true
 }
+
 
 
 }
