@@ -70,33 +70,30 @@ class FaselHD : MainAPI() {
         return newHomePageResponse(request.name, list)
     }
 
- override suspend fun search(query: String): List<SearchResponse> {
-    val q = query.replace(" ", "+")
-    val results = mutableListOf<SearchResponse>()
-    var page = 1
+    override suspend fun search(query: String): List<SearchResponse> {
+        val q = query.replace(" ", "+")
+        val results = mutableListOf<SearchResponse>()
+        var page = 1
 
-    while (true) {
-        // Build URL using page number
-        val url = "$mainUrl/page/$page?s=$q"
-        var d = app.get(url).document
+        while (true) {
+            val url = "$mainUrl/page/$page?s=$q"
+            var d = app.get(url).document
 
-        // fallback if blocked by Cloudflare etc.
-        if (d.select("title").text().contains("Just a moment...")) {
-            d = app.get("$alternativeUrl/page/$page?s=$q", interceptor = cfKiller, timeout = 120).document
+            if (d.select("title").text().contains("Just a moment...")) {
+                d = app.get("$alternativeUrl/page/$page?s=$q", interceptor = cfKiller, timeout = 120).document
+            }
+
+            val items = d.select("div[id=\"postList\"] div[class=\"col-xl-2 col-lg-2 col-md-3 col-sm-3\"]")
+                .mapNotNull { it.toSearchResponse() }
+
+            if (items.isEmpty()) break
+
+            results += items
+            page++
         }
 
-        val items = d.select("div[id=\"postList\"] div[class=\"col-xl-2 col-lg-2 col-md-3 col-sm-3\"]")
-                     .mapNotNull { it.toSearchResponse() }
-
-        if (items.isEmpty()) break  // no more results => stop
-
-        results += items
-        page++
+        return results
     }
-
-    return results
-}
-
 
     override suspend fun load(url: String): LoadResponse {
         var doc = app.get(url).document
@@ -187,135 +184,134 @@ class FaselHD : MainAPI() {
         }
     }
 
-override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    var doc = app.get(data).document
-    if (doc.text().contains("Just a moment", ignoreCase = true)) {
-        doc = app.get(data, interceptor = cfKiller).document
-    }
-
-    // 🔹 Collect download candidates
-    val downloadCandidates = doc.select("a[href*=\"/file/\"]")
-        .mapNotNull { element ->
-            val href = element.attr("href").takeIf { it.isNotBlank() }
-            href?.let { it to "download" }
+    override suspend fun loadLinks(
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        var doc = app.get(data).document
+        if (doc.text().contains("Just a moment", ignoreCase = true)) {
+            doc = app.get(data, interceptor = cfKiller).document
         }
 
-    // 🔹 Collect iframe candidate
-    val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
-        ?.attr("src")
-        ?.takeIf { it.isNotBlank() }
-        ?.let { it to "iframe" }
-
-    val candidates = (downloadCandidates + listOfNotNull(iframeCandidate))
-
-    println("FaselHD → Candidates: ${candidates.joinToString { "${it.second}: ${it.first}" }}")
-
-    candidates.apmap { (url, method) ->
-        when (method) {
-            // =======================
-            // DOWNLOAD LINK HANDLING
-            // =======================
-            "download" -> runCatching {
-                println("FaselHD → Download URL = $url")
-
-                callback(
-                    newExtractorLink(
-                        source = name,
-                        name = "$name Download Source",
-                        url = url
-                    ) {
-                        referer = mainUrl
-                        quality = Qualities.Unknown.value
-                    }
-                )
-            }.onFailure { e ->
-                println("FaselHD → Download failed: ${e.message}")
+        val downloadCandidates = doc.select("a[href*=\"/file/\"]")
+            .mapNotNull { element ->
+                val href = element.attr("href").takeIf { it.isNotBlank() }
+                href?.let { it to "download" }
             }
 
-            // =======================
-            // IFRAME PLAYER HANDLING
-            // =======================
-            "iframe" -> runCatching {
-                println("FaselHD → Iframe URL = $url")
+        val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
+            ?.attr("src")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { it to "iframe" }
 
-                val result = WebViewResolver(
-                    Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
-                ).resolveUsingWebView(
-                    requestCreator("GET", url, referer = mainUrl)
-                )
+        val candidates = (downloadCandidates + listOfNotNull(iframeCandidate))
 
-                val m3u8Url = result?.toString()
+        println("FaselHD → Candidates: ${candidates.joinToString { "${it.second}: ${it.first}" }}")
 
-                if (!m3u8Url.isNullOrBlank() && m3u8Url.contains("scdns.io")) {
-                    println("FaselHD → Found valid .m3u8 = $m3u8Url")
+        candidates.apmap { (url, method) ->
+            when (method) {
+                "download" -> runCatching {
+                    println("FaselHD → Download URL = $url")
 
                     callback(
                         newExtractorLink(
                             source = name,
-                            name = "$name HLS",
-                            url = m3u8Url,
-                            type = ExtractorLinkType.M3U8 // ✅ HLS type
+                            name = "$name Download Source",
+                            url = url
                         ) {
                             referer = mainUrl
                             quality = Qualities.Unknown.value
-                            headers = mapOf(
-                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                                "Origin" to mainUrl,
-                                "Referer" to mainUrl
-                            )
                         }
                     )
-                } else {
-                    println("FaselHD → No valid scdns.io .m3u8 from WebView. Scanning raw HTML...")
+                }.onFailure { e ->
+                    println("FaselHD → Download failed: ${e.message}")
+                }
 
-                    val iframeDoc = app.get(
-                        url,
-                        referer = mainUrl,
-                        interceptor = cfKiller,
-                        timeout = 120
-                    ).document
+                "iframe" -> runCatching {
+                    println("FaselHD → Iframe URL = $url")
 
-                    val html = iframeDoc.outerHtml()
-                    val fallbackM3u8 = Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
-                        .find(html)?.value
+                    val result = WebViewResolver(
+                        Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
+                    ).resolveUsingWebView(
+                        requestCreator("GET", url, referer = mainUrl)
+                    )
 
-                    if (!fallbackM3u8.isNullOrBlank()) {
-                        println("FaselHD → Fallback found .m3u8 = $fallbackM3u8")
+                    val m3u8Url = result?.toString()
+
+                    if (!m3u8Url.isNullOrBlank() && m3u8Url.contains("scdns.io")) {
+                        println("FaselHD → Found valid .m3u8 = $m3u8Url")
+
+                        val headers = mapOf(
+                            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+                            "Origin" to mainUrl,
+                            "Referer" to mainUrl
+                        )
+                        println("FaselHD → Sending link to player:")
+                        println("URL = $m3u8Url")
+                        println("Headers = $headers")
 
                         callback(
                             newExtractorLink(
                                 source = name,
-                                name = "$name HLS (Fallback)",
-                                url = fallbackM3u8,
-                                type = ExtractorLinkType.M3U8 // ✅ HLS type
+                                name = "$name HLS",
+                                url = m3u8Url,
+                                type = ExtractorLinkType.M3U8
                             ) {
                                 referer = mainUrl
                                 quality = Qualities.Unknown.value
-                                headers = mapOf(
-                                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                                    "Origin" to mainUrl,
-                                    "Referer" to mainUrl
-                                )
+                                this.headers = headers
                             }
                         )
                     } else {
-                        println("FaselHD → Still no .m3u8 in iframe HTML.")
+                        println("FaselHD → No valid scdns.io .m3u8 from WebView. Scanning raw HTML...")
+
+                        val iframeDoc = app.get(
+                            url,
+                            referer = mainUrl,
+                            interceptor = cfKiller,
+                            timeout = 120
+                        ).document
+
+                        val html = iframeDoc.outerHtml()
+                        val fallbackM3u8 = Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
+                            .find(html)?.value
+
+                        if (!fallbackM3u8.isNullOrBlank()) {
+                            println("FaselHD → Fallback found .m3u8 = $fallbackM3u8")
+
+                            val headers = mapOf(
+                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+                                "Origin" to mainUrl,
+                                "Referer" to mainUrl
+                            )
+                            println("FaselHD → Sending fallback link to player:")
+                            println("URL = $fallbackM3u8")
+                            println("Headers = $headers")
+
+                            callback(
+                                newExtractorLink(
+                                    source = name,
+                                    name = "$name HLS (Fallback)",
+                                    url = fallbackM3u8,
+                                    type = ExtractorLinkType.M3U8
+                                ) {
+                                    referer = mainUrl
+                                    quality = Qualities.Unknown.value
+                                    this.headers = headers
+                                }
+                            )
+                        } else {
+                            println("FaselHD → Still no .m3u8 in iframe HTML.")
+                        }
                     }
+                }.onFailure { e ->
+                    println("FaselHD → Iframe failed: ${e.message}")
                 }
-            }.onFailure { e ->
-                println("FaselHD → Iframe failed: ${e.message}")
             }
         }
+
+        return true
     }
-
-    return true
-}
-
-
-
 }
