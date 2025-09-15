@@ -183,8 +183,6 @@ class FaselHD : MainAPI() {
             }
         }
     }
-
-    
 override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
@@ -196,7 +194,7 @@ override suspend fun loadLinks(
         doc = app.get(data, interceptor = cfKiller).document
     }
 
-    // 🔹 Only collect iframe
+    // 🔹 Only iframe
     val iframeCandidate = doc.selectFirst("iframe[name=\"player_iframe\"]")
         ?.attr("src")
         ?.takeIf { it.isNotBlank() }
@@ -209,19 +207,36 @@ override suspend fun loadLinks(
     println("FaselHD → Iframe URL = $iframeCandidate")
 
     runCatching {
-        val result = WebViewResolver(
-            Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
-        ).resolveUsingWebView(
-            requestCreator("GET", iframeCandidate, referer = mainUrl)
-        )
+        // Load iframe page
+        val iframeDoc = app.get(
+            iframeCandidate,
+            referer = mainUrl,
+            interceptor = cfKiller,
+            timeout = 120
+        ).document
 
-        val m3u8Url = result?.toString()
+        val html = iframeDoc.outerHtml()
+
+        // 1️⃣ Try to extract m3u8 directly from HTML
+        var m3u8Url: String? = Regex("""https?://[^"]+\.m3u8""")
+            .find(html)?.value
+
+        // 2️⃣ Try JWPlayer setup JSON
+        if (m3u8Url.isNullOrBlank()) {
+            m3u8Url = Regex(""""file"\s*:\s*"([^"]+\.m3u8)"""")
+                .find(html)?.groupValues?.get(1)
+        }
+
         println("═════════════════════════════════════")
-        println("FaselHD DEBUG → WebView resolved URL = $m3u8Url")
+        println("FaselHD DEBUG → Extracted m3u8 = $m3u8Url")
         println("═════════════════════════════════════")
 
-        if (!m3u8Url.isNullOrBlank() && m3u8Url.contains("scdns.io")) {
-            println("✅ FaselHD → Found valid m3u8 via WebView: $m3u8Url")
+        if (!m3u8Url.isNullOrBlank()) {
+            val headers = mapOf(
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+                "Origin" to mainUrl,
+                "Referer" to mainUrl
+            )
 
             callback(
                 newExtractorLink(
@@ -232,59 +247,21 @@ override suspend fun loadLinks(
                 ) {
                     referer = mainUrl
                     quality = Qualities.Unknown.value
-                    headers = mapOf(
-                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                        "Origin" to mainUrl,
-                        "Referer" to mainUrl
-                    )
+                    this.headers = headers
                 }
             )
         } else {
-            println("❌ FaselHD DEBUG → No valid m3u8 from WebView. Trying raw HTML fallback…")
-
-            val iframeDoc = app.get(
-                iframeCandidate,
-                referer = mainUrl,
-                interceptor = cfKiller,
-                timeout = 120
-            ).document
-
-            val html = iframeDoc.outerHtml()
-
-            // Regex scan for scdns.io .m3u8
-            val fallbackM3u8 = Regex("""https://[^"]+scdns\.io[^"]+\.m3u8""")
-                .find(html)?.value
-
-            if (!fallbackM3u8.isNullOrBlank()) {
-                println("✅ FaselHD → Found fallback m3u8: $fallbackM3u8")
-
-                callback(
-                    newExtractorLink(
-                        source = name,
-                        name = "$name HLS (Fallback)",
-                        url = fallbackM3u8,
-                        type = ExtractorLinkType.M3U8
-                    ) {
-                        referer = mainUrl
-                        quality = Qualities.Unknown.value
-                        headers = mapOf(
-                            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
-                            "Origin" to mainUrl,
-                            "Referer" to mainUrl
-                        )
-                    }
-                )
-            } else {
-                println("❌ FaselHD DEBUG → Still no .m3u8 in iframe HTML. Extraction failed.")
-            }
+            println("❌ FaselHD DEBUG → No .m3u8 found inside JWPlayer config.")
         }
     }.onFailure { e ->
-        println("❌ FaselHD → Iframe extraction failed: ${e.message}")
+        println("❌ FaselHD → Iframe parsing failed: ${e.message}")
         e.printStackTrace()
     }
 
     return true
 }
+
+    
 
 
 }
