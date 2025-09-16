@@ -51,7 +51,7 @@ class CimaNow : MainAPI() {
             .not("section:contains(أختر وجهتك المفضلة)")
             .not("section:contains(تم اضافته حديثاً)")
             .map { section ->
-                val name = section.select("span").html().replace("<em>.*| <i c.*".toRegex(), "")
+                val name = section.select("span").ownText() // ✅ removes emoji <img>
                 val list = section.select("a").mapNotNull { link ->
                     if (link.attr("href").contains("$mainUrl/category/|$mainUrl/الاكثر-مشاهدة/".toRegex())) return@mapNotNull null
                     link.toSearchResponse()
@@ -91,7 +91,7 @@ class CimaNow : MainAPI() {
         return result.distinct().sortedBy { it.name }
     }
 
-    /*  override suspend fun load(url: String): LoadResponse {
+    override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url).document
         val posterUrl = doc.select("body > script:nth-child(3)").html()
             .replace(".*,\"image\":\"|\".*".toRegex(), "")
@@ -115,7 +115,7 @@ class CimaNow : MainAPI() {
 
         return if (isMovie) {
             newMovieLoadResponse(
-                title = title,
+                name = title,
                 url = url,
                 type = TvType.Movie,
                 dataUrl = "$url/watching"
@@ -137,7 +137,13 @@ class CimaNow : MainAPI() {
                     this.posterUrl = episode.select("a img:nth-child(2)").attr("src")
                 }
             }
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes.distinct().sortedBy { it.episode ?: Int.MAX_VALUE }) {
+
+            newTvSeriesLoadResponse(
+                name = title,
+                url = url,
+                type = TvType.TvSeries,
+                episodes = episodes.distinct().sortedBy { it.episode ?: Int.MAX_VALUE }
+            ) {
                 this.posterUrl = posterUrl
                 this.tags = tags
                 this.year = year
@@ -146,70 +152,7 @@ class CimaNow : MainAPI() {
                 addTrailer(youtubeTrailer)
             }
         }
-    }*/
-    override suspend fun load(url: String): LoadResponse {
-    val doc = app.get(url).document
-    val posterUrl = doc.select("body > script:nth-child(3)").html()
-        .replace(".*,\"image\":\"|\".*".toRegex(), "")
-        .ifEmpty { doc.select("meta[property=\"og:image\"]").attr("content") }
-    val year = doc.select("article ul:nth-child(1) li a").last()?.text()?.toIntOrNull()
-    val title = doc.select("title").text().split(" | ")[0]
-    val isMovie = title.contains("فيلم|حفلات|مسرحية".toRegex())
-    val youtubeTrailer = doc.select("iframe")?.attr("src")
-    val synopsis = doc.select("ul#details li:contains(لمحة) p").text()
-    val tags = doc.select("article ul").first()?.select("li")?.map { it.text() }
-
-    val recommendations = doc.select("ul#related li").map { element ->
-        newMovieSearchResponse(
-            name = element.select("img:nth-child(2)").attr("alt"),
-            url = element.select("a").attr("href"),
-            type = TvType.Movie
-        ) {
-            this.posterUrl = element.select("img:nth-child(2)").attr("src")
-        }
     }
-
-    return if (isMovie) {
-        newMovieLoadResponse(
-            name = title,
-            url = url,
-            type = TvType.Movie,
-            dataUrl = "$url/watching"
-        ) {
-            this.posterUrl = posterUrl
-            this.year = year
-            this.recommendations = recommendations
-            this.plot = synopsis
-            this.tags = tags
-            addTrailer(youtubeTrailer)
-        }
-    } else {
-        val episodes = doc.select("ul#eps li").map { episode ->
-            newEpisode(episode.select("a").attr("href") + "/watching") {
-                this.name = episode.select("a img:nth-child(2)").attr("alt")
-                this.season = doc.select("span[aria-label=\"season-title\"]")
-                    .html().replace("<p>.*|\n".toRegex(), "").getIntFromText()
-                this.episode = episode.select("a em").text().toIntOrNull()
-                this.posterUrl = episode.select("a img:nth-child(2)").attr("src")
-            }
-        }
-
-        newTvSeriesLoadResponse(
-            name = title,
-            url = url,
-            type = TvType.TvSeries,
-            episodes = episodes.distinct().sortedBy { it.episode ?: Int.MAX_VALUE }
-        ) {
-            this.posterUrl = posterUrl
-            this.tags = tags
-            this.year = year
-            this.plot = synopsis
-            this.recommendations = recommendations
-            addTrailer(youtubeTrailer)
-        }
-    }
-}
-
 
     override suspend fun loadLinks(
         data: String,
@@ -225,7 +168,7 @@ class CimaNow : MainAPI() {
                         source = this.name,
                         name = "$name ${media.text()}",
                         url = media.attr("href"),
-                    ){
+                    ) {
                         referer = mainUrl
                         quality = media.text().getIntFromText() ?: Qualities.Unknown.value
                     }
