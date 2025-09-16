@@ -51,7 +51,7 @@ class CimaNow : MainAPI() {
             .not("section:contains(أختر وجهتك المفضلة)")
             .not("section:contains(تم اضافته حديثاً)")
             .map { section ->
-                val name = section.select("span").ownText() // ✅ removes emoji <img>
+                val name = section.select("span").apply { select("img").remove() }.text()
                 val list = section.select("a").mapNotNull { link ->
                     if (link.attr("href").contains("$mainUrl/category/|$mainUrl/الاكثر-مشاهدة/".toRegex())) return@mapNotNull null
                     link.toSearchResponse()
