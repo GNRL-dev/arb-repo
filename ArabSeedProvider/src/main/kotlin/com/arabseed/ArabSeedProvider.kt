@@ -45,12 +45,12 @@ class ArabSeed : MainAPI() {
 
     // Quality text like "WEB-DL" from .__quality
     val qualityText = selectFirst(".__quality")?.text()
-    val quality = when {
-        qualityText?.contains("1080") == true -> SearchQuality.HD1080
-        qualityText?.contains("720") == true -> SearchQuality.HD720
-        qualityText?.contains("480") == true -> SearchQuality.SD
-        else -> null
-    }
+  //  val quality = when {
+     //   qualityText?.contains("1080") == true -> SearchQuality.HD1080
+      //  qualityText?.contains("720") == true -> SearchQuality.HD720
+     //   qualityText?.contains("480") == true -> SearchQuality.SD
+     //  else -> null
+  //  }
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = poster
@@ -93,12 +93,6 @@ override suspend fun search(query: String): List<SearchResponse> {
     return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
 }
 
-
-    override suspend fun search(query: String): List<SearchResponse> {
-        val url = "$mainUrl/?s=$query"
-        val doc = app.get(url).document
-        return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
-    }
 
     override suspend fun load(url: String): LoadResponse {
         val doc = app.get(url).document
