@@ -14,7 +14,7 @@ class ArabSeed : MainAPI() {
     private val cfKiller = CloudflareKiller()
 
     // --- Convert card element into SearchResponse ---
-   private fun Element.toSearchResponse(): SearchResponse? {
+   /* private fun Element.toSearchResponse(): SearchResponse? {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
     val poster = selectFirst(".post__image img")?.attr("src")
@@ -23,7 +23,26 @@ class ArabSeed : MainAPI() {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap() // 🔥 required for thumbnails
     }
+}*/
+
+private fun Element.toSearchResponse(): SearchResponse? {
+    val href = this.attr("href") ?: return null
+    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+
+    // Try to grab poster
+    val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }
+
+    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+        this.posterUrl = poster
+        // Force Cloudflare headers to allow image loading
+        this.posterHeaders = mapOf(
+            "Referer" to mainUrl,
+            "User-Agent" to USER_AGENT,
+        ) + cfKiller.getCookieHeaders(mainUrl).toMap()
+    }
 }
+
+
 
 
     // --- Home categories ---
