@@ -113,28 +113,41 @@ class ArabSeed : MainAPI() {
     // --- Return response ---
     return if (episodes.size > 1) {
         // Tv Series
-        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-            this.quality = getQualityFromString(quality)
-            this.addCountry(country)
-            this.addDuration(duration)
-        }
+newTvSeriesLoadResponse(
+    name = title,
+    url = url,
+    type = TvType.TvSeries,
+    episodes = episodes,
+    dataUrl = url
+) {
+    this.posterUrl = poster
+    this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+    this.plot = plot
+    this.tags = genres
+    this.year = year
+    this.quality = getQualityFromString(quality)
+    this.addCountry(country)
+    this.addDuration(duration)
+}
+
     } else {
         // Movie
-        newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-            this.quality = getQualityFromString(quality)
-            this.addCountry(country)
-            this.addDuration(duration)
-        }
+newMovieLoadResponse(
+    name = title,
+    url = url,
+    type = TvType.Movie,
+    dataUrl = url
+) {
+    this.posterUrl = poster
+    this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+    this.plot = plot
+    this.tags = genres
+    this.year = year
+    this.quality = getQualityFromString(quality)
+    this.addCountry(country)
+    this.addDuration(duration)
+}
+
     }
 }
 
