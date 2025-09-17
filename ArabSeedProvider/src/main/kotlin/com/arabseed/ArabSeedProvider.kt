@@ -1,12 +1,9 @@
 package com.arabseed
 
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.newExtractorLink
-//import com.lagradost.cloudstream3.utils.Qualitie
 import org.jsoup.nodes.Element
-import java.net.URI
 
 class ArabSeed : MainAPI() {
     override var lang = "ar"
@@ -14,20 +11,31 @@ class ArabSeed : MainAPI() {
     override var name = "ArabSeed"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
-    
 
+    // --- Map text to quality ---
+    private fun mapQuality(text: String?): SearchQuality? {
+        return when {
+            text?.contains("1080") == true -> SearchQuality.HD1080
+            text?.contains("720") == true -> SearchQuality.HD720
+            text?.contains("480") == true -> SearchQuality.SD
+            else -> null
+        }
+    }
+
+    // --- Convert card element into SearchResponse ---
     private fun Element.toSearchResponse(): SearchResponse? {
-        val href = this.attr("href")
-        val title = selectFirst("h3")?.text() ?: return null
-        val poster = selectFirst("img")?.attr("src")
-       // val quality = mapQuality(selectFirst(".__quality")?.text())
+        val href = this.attr("href") ?: return null
+        val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+        val poster = selectFirst(".post__image img")?.attr("src")
+        val quality = mapQuality(selectFirst(".__quality")?.text())
 
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
             this.posterUrl = poster
             this.quality = quality
         }
-    
     }
+
+    // --- Home categories ---
     override val mainPage = mainPageOf(
         "$mainUrl/main0/" to "الرئيسية",
         "$mainUrl/category/foreign-movies-6/" to "افلام اجنبي",
@@ -37,40 +45,26 @@ class ArabSeed : MainAPI() {
         "$mainUrl/category/arabic-series-2/" to "مسلسلات عربي",
         "$mainUrl/category/%d9%85%d8%b3%d9%84%d8%b3%d9%84-%d9%83%d9%88%d8%b1%d9%8a%d9%87/" to "مسلسلات كوريه",
         "$mainUrl/category/%d8%a7%d9%81%d9%84%d8%a7%d9%85-%d8%a7%d9%86%d9%8a%d9%85%d9%8a%d8%b4%d9%86/" to "افلام انيميشن",
-        "$mainUrl/category/cartoon-series/" to "مسلسلات أنمي"
+        "$mainUrl/category/cartoon-series/" to "مسلسلات كرتون"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-    val url = if (page == 1) request.data else "${request.data}page/$page/"
-    val doc = app.get(url).document
-
-    // Select all cards by .movie__block (which wraps everything, including poster)
-    val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
-
-    return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
-}
-
-override suspend fun search(query: String): List<SearchResponse> {
-    val url = "$mainUrl/find/?word=${query.replace(" ", "+")}&type="
-    val doc = app.get(url).document
-
-    return doc.select("a.movie__block").mapNotNull { element ->
-        val href = element.attr("href")
-        val title = element.selectFirst("h3")?.text() ?: element.attr("title") ?: return@mapNotNull null
-        val poster = element.selectFirst(".post__image img")?.attr("src")
-
-    
-
-        newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-            this.posterUrl = poster
-            this.quality = quality
-        }
+        val url = if (page == 1) request.data else "${request.data}page/$page/"
+        val doc = app.get(url, interceptor = CloudflareKiller()).document
+        val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
+        return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
     }
-}
 
+    // --- Fixed search using /find/ endpoint ---
+    override suspend fun search(query: String): List<SearchResponse> {
+        val url = "$mainUrl/find/?word=${query.replace(" ", "+")}&type="
+        val doc = app.get(url, interceptor = CloudflareKiller()).document
+        return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
+    }
 
+    // --- Load detail page (movie or series) ---
     override suspend fun load(url: String): LoadResponse {
-        val doc = app.get(url).document
+        val doc = app.get(url, interceptor = CloudflareKiller()).document
         val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
             ?: doc.selectFirst("title")?.text().orEmpty()
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
@@ -104,12 +98,12 @@ override suspend fun search(query: String): List<SearchResponse> {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val doc = app.get(data).document
+         val doc = app.get(data, interceptor = CloudflareKiller()).document
         val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
             ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
             ?: return false
 
-        val watchDoc = app.get(watchUrl, referer = mainUrl).document
+         val watchDoc = app.get(watchUrl, referer = mainUrl, interceptor = CloudflareKiller()).document
         val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
 
         for (iframe in iframes) {
