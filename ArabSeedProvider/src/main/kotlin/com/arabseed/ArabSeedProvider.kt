@@ -18,8 +18,7 @@ class ArabSeed : MainAPI() {
         val href = this.attr("href") ?: return null
         val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
         val poster = selectFirst(".post__image img")?.attr("src")
-        val quality = mapQuality(selectFirst(".__quality")?.text())
-
+    
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
             this.posterUrl = poster
             this.quality = quality
