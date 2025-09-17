@@ -12,15 +12,6 @@ class ArabSeed : MainAPI() {
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
 
-    // --- Map text to quality ---
-    private fun mapQuality(text: String?): SearchQuality? {
-        return when {
-            text?.contains("1080") == true -> SearchQuality.HD1080
-            text?.contains("720") == true -> SearchQuality.HD720
-            text?.contains("480") == true -> SearchQuality.SD
-            else -> null
-        }
-    }
 
     // --- Convert card element into SearchResponse ---
     private fun Element.toSearchResponse(): SearchResponse? {
