@@ -27,7 +27,7 @@ class ArabSeed : MainAPI() {
             this.quality = quality
         }
     
-  
+    }
     override val mainPage = mainPageOf(
         "$mainUrl/main0/" to "الرئيسية",
         "$mainUrl/category/foreign-movies-6/" to "افلام اجنبي",
@@ -59,12 +59,7 @@ override suspend fun search(query: String): List<SearchResponse> {
         val title = element.selectFirst("h3")?.text() ?: element.attr("title") ?: return@mapNotNull null
         val poster = element.selectFirst(".post__image img")?.attr("src")
 
-        val qualityText = element.selectFirst(".__quality")?.text()
-        val quality = when {
-            qualityText?.contains("1080") == true -> SearchQuality.HD1080
-            qualityText?.contains("720") == true -> SearchQuality.HD720
-            else -> null
-        }
+    
 
         newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
             this.posterUrl = poster
