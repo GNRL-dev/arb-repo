@@ -139,7 +139,7 @@ class ArabSeed : MainAPI() {
                     type = ExtractorLinkType.VIDEO
                 ) {
                     referer = iframe
-                    this.quality = quality
+                   // this.quality = quality
                     headers = mapOf()
                 }
             )
