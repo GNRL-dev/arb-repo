@@ -11,6 +11,7 @@ class ArabSeed : MainAPI() {
     override var name = "ArabSeed"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
+    private val cfKiller = CloudflareKiller()
 
 
     // --- Convert card element into SearchResponse ---
