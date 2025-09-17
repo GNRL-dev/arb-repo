@@ -208,7 +208,7 @@ override suspend fun load(url: String): LoadResponse {
         }
     } else {
         // Movie
-        newMovieLoadResponse(title, url, TvType.Movie) {
+        newMovieLoadResponse(title, url, TvType.Movie, url) {
             this.posterUrl = poster
             this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
             this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
