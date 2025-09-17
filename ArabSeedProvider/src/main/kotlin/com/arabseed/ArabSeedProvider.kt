@@ -23,7 +23,7 @@ class ArabSeed : MainAPI() {
             text?.contains("480") == true -> SearchQuality.SD
             else -> null
         }
-    }*/
+    }
 
     private fun Element.toSearchResponse(): SearchResponse? {
         val href = this.attr("href")
@@ -35,7 +35,29 @@ class ArabSeed : MainAPI() {
             this.posterUrl = poster
             this.quality = quality
         }
+    */
+    private fun Element.toSearchResponse(): SearchResponse? {
+    val href = this.attr("href") ?: return null
+    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+
+    // Poster lives inside .post__image img
+    val poster = selectFirst(".post__image img")?.attr("src")
+
+    // Quality text like "WEB-DL" from .__quality
+    val qualityText = selectFirst(".__quality")?.text()
+    val quality = when {
+        qualityText?.contains("1080") == true -> SearchQuality.HD1080
+        qualityText?.contains("720") == true -> SearchQuality.HD720
+        qualityText?.contains("480") == true -> SearchQuality.SD
+        else -> null
     }
+
+    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+        this.posterUrl = poster
+        this.quality = quality
+    }
+}
+
 
     override val mainPage = mainPageOf(
         "$mainUrl/main0/" to "الرئيسية",
@@ -46,15 +68,31 @@ class ArabSeed : MainAPI() {
         "$mainUrl/category/arabic-series-2/" to "مسلسلات عربي",
         "$mainUrl/category/%d9%85%d8%b3%d9%84%d8%b3%d9%84-%d9%83%d9%88%d8%b1%d9%8a%d9%87/" to "مسلسلات كوريه",
         "$mainUrl/category/%d8%a7%d9%81%d9%84%d8%a7%d9%85-%d8%a7%d9%86%d9%8a%d9%85%d9%8a%d8%b4%d9%86/" to "افلام انيميشن",
-        "$mainUrl/category/cartoon-series/" to "مسلسلات كرتون"
+        "$mainUrl/category/cartoon-series/" to "مسلسلات أنمي"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+    /*override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}page/$page/"
         val doc = app.get(url).document
         val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
         return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
-    }
+    }*/
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+    val url = if (page == 1) request.data else "${request.data}page/$page/"
+    val doc = app.get(url).document
+
+    // Select all cards by .movie__block (which wraps everything, including poster)
+    val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
+
+    return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
+}
+
+override suspend fun search(query: String): List<SearchResponse> {
+    val url = "$mainUrl/?s=$query"
+    val doc = app.get(url).document
+    return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
+}
+
 
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/?s=$query"
