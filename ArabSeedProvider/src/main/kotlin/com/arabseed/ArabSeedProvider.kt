@@ -14,15 +14,17 @@ class ArabSeed : MainAPI() {
     private val cfKiller = CloudflareKiller()
 
     // --- Convert card element into SearchResponse ---
-    private fun Element.toSearchResponse(): SearchResponse? {
-        val href = this.attr("href") ?: return null
-        val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-        val poster = selectFirst(".post__image img")?.attr("src")
+   private fun Element.toSearchResponse(): SearchResponse? {
+    val href = this.attr("href") ?: return null
+    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+    val poster = selectFirst(".post__image img")?.attr("src")
 
-        return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-            this.posterUrl = poster
-        }
+    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+        this.posterUrl = poster
+        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap() // 🔥 required for thumbnails
     }
+}
+
 
     // --- Home categories ---
     override val mainPage = mainPageOf(
