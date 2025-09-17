@@ -29,18 +29,25 @@ private fun Element.toSearchResponse(): SearchResponse? {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
-    // Try to grab poster
+    // Grab poster
     val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }
+
+    // Debugging output
+    println("=== ArabSeed DEBUG ===")
+    println("Title: $title")
+    println("URL: $href")
+    println("Poster raw: ${selectFirst(".post__image img")?.attr("src")}")
+    println("Poster fixed: $poster")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = poster
-        // Force Cloudflare headers to allow image loading
         this.posterHeaders = mapOf(
             "Referer" to mainUrl,
             "User-Agent" to USER_AGENT,
         ) + cfKiller.getCookieHeaders(mainUrl).toMap()
     }
 }
+
 
 
 
@@ -93,6 +100,13 @@ override suspend fun load(url: String): LoadResponse {
     val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
         ?: doc.selectFirst("title")?.text().orEmpty()
     val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+
+    // Debugging
+    println("=== ArabSeed DEBUG (load) ===")
+    println("Title: $title")
+    println("URL: $url")
+    println("Poster meta: ${doc.selectFirst("meta[property=og:image]")?.attr("content")}")
+    println("Poster final: $poster")
 
     // --- Plot / description ---
     val plot = doc.selectFirst("div.post__story p")?.text()
