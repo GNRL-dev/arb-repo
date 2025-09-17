@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
+import android.net.Uri
 
 class ArabSeed : MainAPI() {
     override var lang = "ar"
@@ -25,7 +26,7 @@ class ArabSeed : MainAPI() {
     }
 }*/
 
-private fun Element.toSearchResponse(): SearchResponse? {
+/*private fun Element.toSearchResponse(): SearchResponse? {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
@@ -47,8 +48,23 @@ private fun Element.toSearchResponse(): SearchResponse? {
         ) + cfKiller.getCookieHeaders(mainUrl).toMap()
     }
 }
+*/
 
+// --- Inside toSearchResponse() ---
+private fun Element.toSearchResponse(): SearchResponse? {
+    val href = this.attr("href") ?: return null
+    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
+    // Grab poster and sanitize invalid characters like '@'
+    val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
+        Uri.encode(it, "@") // encodes everything except '@'
+    }
+
+    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+        this.posterUrl = poster
+        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+    }
+}
 
 
 
@@ -99,8 +115,11 @@ override suspend fun load(url: String): LoadResponse {
     // --- Title & poster ---
     val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
         ?: doc.selectFirst("title")?.text().orEmpty()
-    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+  //  val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
 
+    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.let {
+    Uri.encode(it, "@")
+    }
     // Debugging
     println("=== ArabSeed DEBUG (load) ===")
     println("Title: $title")
