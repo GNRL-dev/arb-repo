@@ -13,16 +13,14 @@ class ArabSeed : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
     private val cfKiller = CloudflareKiller()
 
-
     // --- Convert card element into SearchResponse ---
     private fun Element.toSearchResponse(): SearchResponse? {
         val href = this.attr("href") ?: return null
         val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
         val poster = selectFirst(".post__image img")?.attr("src")
-    
+
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
             this.posterUrl = poster
-            this.quality = quality
         }
     }
 
@@ -41,7 +39,12 @@ class ArabSeed : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}page/$page/"
-        val doc = app.get(url, interceptor = CloudflareKiller()).document
+
+        var doc = app.get(url).document
+        if (doc.select("title").text() == "Just a moment...") {
+            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
+        }
+
         val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
         return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
     }
@@ -49,13 +52,22 @@ class ArabSeed : MainAPI() {
     // --- Fixed search using /find/ endpoint ---
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/find/?word=${query.replace(" ", "+")}&type="
-        val doc = app.get(url, interceptor = CloudflareKiller()).document
+
+        var doc = app.get(url).document
+        if (doc.select("title").text() == "Just a moment...") {
+            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
+        }
+
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
 
     // --- Load detail page (movie or series) ---
     override suspend fun load(url: String): LoadResponse {
-        val doc = app.get(url, interceptor = CloudflareKiller()).document
+        var doc = app.get(url).document
+        if (doc.select("title").text() == "Just a moment...") {
+            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
+        }
+
         val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
             ?: doc.selectFirst("title")?.text().orEmpty()
         val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
@@ -84,46 +96,59 @@ class ArabSeed : MainAPI() {
     }
 
     override suspend fun loadLinks(
-        data: String,
-        isCasting: Boolean,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ): Boolean {
-         val doc = app.get(data, interceptor = CloudflareKiller()).document
-        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-            ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-            ?: return false
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    var doc = app.get(data).document
+    if (doc.select("title").text() == "Just a moment...") {
+        doc = app.get(data, interceptor = cfKiller, timeout = 120).document
+    }
 
-         val watchDoc = app.get(watchUrl, referer = mainUrl, interceptor = CloudflareKiller()).document
-        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+    val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
+        ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
+        ?: return false
 
-        for (iframe in iframes) {
-            val iframeDoc = app.get(iframe, referer = watchUrl).document
-            iframeDoc.select("source").forEach { sourceEl ->
-                val src = sourceEl.attr("src")
-                val quality = when {
-                    src.contains("1080") -> Qualities.P1080
-                    src.contains("720") -> Qualities.P720
-                    else -> Qualities.Unknown
-                }
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "Direct",
-                        url = src,
-                    ){
-                        referer = mainUrl
-                       // quality = media.text().getIntFromText() ?: Qualities.Unknown.value
-                        this.headers = headers
-                      //  extractorData = null,
-                        type = ExtractorLinkType.VIDEO
-                    }
-                )
+    var watchDoc = app.get(watchUrl, referer = mainUrl).document
+    if (watchDoc.select("title").text() == "Just a moment...") {
+        watchDoc = app.get(watchUrl, referer = mainUrl, interceptor = cfKiller, timeout = 120).document
+    }
+
+    val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+
+    for (iframe in iframes) {
+        var iframeDoc = app.get(iframe, referer = watchUrl).document
+        if (iframeDoc.select("title").text() == "Just a moment...") {
+            iframeDoc = app.get(iframe, referer = watchUrl, interceptor = cfKiller, timeout = 120).document
+        }
+
+        iframeDoc.select("source").forEach { sourceEl ->
+            val src = sourceEl.attr("src")
+            val quality = when {
+                src.contains("1080") -> Qualities.P1080
+                src.contains("720") -> Qualities.P720
+                else -> Qualities.Unknown
             }
 
-            // hand off to built-in extractors too
-            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = "Direct",
+                    url = src,
+                    type = ExtractorLinkType.VIDEO
+                ) {
+                    referer = iframe
+                    this.quality = quality
+                    headers = mapOf()
+                }
+            )
         }
-        return true
+
+        // hand off to built-in extractors too
+        loadExtractor(iframe, watchUrl, subtitleCallback, callback)
     }
+    return true
+}
+
 }
