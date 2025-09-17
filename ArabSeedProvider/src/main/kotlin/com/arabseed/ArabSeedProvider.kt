@@ -64,38 +64,80 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Load detail page (movie or series) ---
-    override suspend fun load(url: String): LoadResponse {
-        var doc = app.get(url).document
-        if (doc.select("title").text() == "Just a moment...") {
-            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
-        }
+   override suspend fun load(url: String): LoadResponse {
+    var doc = app.get(url).document
+    if (doc.select("title").text() == "Just a moment...") {
+        doc = app.get(url, interceptor = cfKiller, timeout = 120).document
+    }
 
-        val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
-            ?: doc.selectFirst("title")?.text().orEmpty()
-        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
-        val plot = doc.selectFirst("meta[name=description]")?.attr("content")
-        val tags = doc.select("meta[property=article:tag]").map { it.attr("content") }
+    // --- Title & poster ---
+    val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+        ?: doc.selectFirst("title")?.text().orEmpty()
+    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
 
-        val episodes = doc.select("a[href*=\"/watch/\"]").map {
-            newEpisode(it.attr("href")) {
-                this.name = it.text().ifBlank { "Episode" }
+    // --- Plot / description ---
+    val plot = doc.selectFirst("div.post__story p")?.text()
+        ?: doc.selectFirst("meta[name=description]")?.attr("content")
+
+    // --- Extra info ---
+    val year = doc.selectFirst(".info__area li:contains(سنة العرض)")?.select("a")?.text()?.toIntOrNull()
+    val quality = doc.selectFirst(".info__area li:contains(جودة العرض)")?.select("a")?.text()
+    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
+    val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
+    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.ownText()
+
+    // --- Episodes ---
+    val episodes = when {
+        // For series: grab all episodes
+        doc.select("ul.episodes__list li a").isNotEmpty() -> {
+            doc.select("ul.episodes__list li a").map {
+                newEpisode(it.attr("href")) {
+                    this.name = it.selectFirst(".epi__num")?.text()?.trim()
+                        ?: "Episode"
+                }
             }
         }
 
-        return if (episodes.isNotEmpty()) {
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.plot = plot
-                this.tags = tags
-            }
-        } else {
-            newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.plot = plot
-                this.tags = tags
-            }
+        // For movies: single "watch" button
+        doc.selectFirst("a.watch__btn") != null -> {
+            listOf(
+                newEpisode(doc.selectFirst("a.watch__btn")!!.attr("href")) {
+                    this.name = "مشاهدة الان"
+                }
+            )
+        }
+
+        else -> emptyList()
+    }
+
+    // --- Return response ---
+    return if (episodes.size > 1) {
+        // Tv Series
+        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            this.posterUrl = poster
+            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+            this.plot = plot
+            this.tags = genres
+            this.year = year
+            this.quality = getQualityFromString(quality)
+            this.addCountry(country)
+            this.addDuration(duration)
+        }
+    } else {
+        // Movie
+        newMovieLoadResponse(title, url, TvType.Movie, url) {
+            this.posterUrl = poster
+            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+            this.plot = plot
+            this.tags = genres
+            this.year = year
+            this.quality = getQualityFromString(quality)
+            this.addCountry(country)
+            this.addDuration(duration)
         }
     }
+}
+
 
     override suspend fun loadLinks(
     data: String,
