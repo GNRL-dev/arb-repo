@@ -198,25 +198,45 @@ override suspend fun load(url: String): LoadResponse {
 
     // --- Return response ---
     return if (episodes.size > 1) {
-        // Tv Series
-        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-            this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
-            this.tags = genres
-            this.year = year
-        }
-    } else {
-        // Movie
-        newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-            this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
-            this.tags = genres
-            this.year = year
-        }
+    newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+        this.posterUrl = poster
+        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+        this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
+        this.tags = genres
+        this.year = year
+    }
+} else {
+    CompatMovieLoadResponse(title, url, TvType.Movie, url) {
+        this.posterUrl = poster
+        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
+        this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
+        this.tags = genres
+        this.year = year
     }
 }
+
+}
+@Suppress("FunctionName")
+fun CompatMovieLoadResponse(
+    name: String,
+    url: String,
+    type: TvType,
+    dataUrl: String? = null,
+    builder: MovieLoadResponse.() -> Unit
+): MovieLoadResponse {
+    return try {
+        // Try new SDK (with dataUrl)
+        if (dataUrl != null) {
+            newMovieLoadResponse(name, url, type, dataUrl, builder)
+        } else {
+            newMovieLoadResponse(name, url, type, builder)
+        }
+    } catch (e: NoSuchMethodError) {
+        // Fall back to old SDK
+        newMovieLoadResponse(name, url, type, builder)
+    }
+}
+
 
 
     override suspend fun loadLinks(
