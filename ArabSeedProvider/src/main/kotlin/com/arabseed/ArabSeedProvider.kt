@@ -217,7 +217,7 @@ override suspend fun load(url: String): LoadResponse {
 
 }
 @Suppress("FunctionName")
-fun CompatMovieLoadResponse(
+suspend fun MainAPI.CompatMovieLoadResponse(
     name: String,
     url: String,
     type: TvType,
