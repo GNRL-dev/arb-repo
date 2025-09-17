@@ -14,16 +14,7 @@ class ArabSeed : MainAPI() {
     override var name = "ArabSeed"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
-
-    // --- map quality string to SearchQuality ---
-    /*private fun mapQuality(text: String?): SearchQuality? {
-        return when {
-            text?.contains("1080") == true -> SearchQuality.HD1080
-            text?.contains("720") == true -> SearchQuality.HD720
-            text?.contains("480") == true -> SearchQuality.SD
-            else -> null
-        }
-    }
+    
 
     private fun Element.toSearchResponse(): SearchResponse? {
         val href = this.attr("href")
@@ -35,30 +26,8 @@ class ArabSeed : MainAPI() {
             this.posterUrl = poster
             this.quality = quality
         }
-    */
-    private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-
-    // Poster lives inside .post__image img
-    val poster = selectFirst(".post__image img")?.attr("src")
-
-    // Quality text like "WEB-DL" from .__quality
-    val qualityText = selectFirst(".__quality")?.text()
-  //  val quality = when {
-     //   qualityText?.contains("1080") == true -> SearchQuality.HD1080
-      //  qualityText?.contains("720") == true -> SearchQuality.HD720
-     //   qualityText?.contains("480") == true -> SearchQuality.SD
-     //  else -> null
-  //  }
-
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = poster
-        this.quality = quality
-    }
-}
-
-
+    
+  
     override val mainPage = mainPageOf(
         "$mainUrl/main0/" to "الرئيسية",
         "$mainUrl/category/foreign-movies-6/" to "افلام اجنبي",
@@ -71,12 +40,6 @@ class ArabSeed : MainAPI() {
         "$mainUrl/category/cartoon-series/" to "مسلسلات أنمي"
     )
 
-    /*override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if (page == 1) request.data else "${request.data}page/$page/"
-        val doc = app.get(url).document
-        val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
-        return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
-    }*/
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
     val url = if (page == 1) request.data else "${request.data}page/$page/"
     val doc = app.get(url).document
@@ -88,9 +51,26 @@ class ArabSeed : MainAPI() {
 }
 
 override suspend fun search(query: String): List<SearchResponse> {
-    val url = "$mainUrl/?s=$query"
+    val url = "$mainUrl/find/?word=${query.replace(" ", "+")}&type="
     val doc = app.get(url).document
-    return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
+
+    return doc.select("a.movie__block").mapNotNull { element ->
+        val href = element.attr("href")
+        val title = element.selectFirst("h3")?.text() ?: element.attr("title") ?: return@mapNotNull null
+        val poster = element.selectFirst(".post__image img")?.attr("src")
+
+        val qualityText = element.selectFirst(".__quality")?.text()
+        val quality = when {
+            qualityText?.contains("1080") == true -> SearchQuality.HD1080
+            qualityText?.contains("720") == true -> SearchQuality.HD720
+            else -> null
+        }
+
+        newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+            this.posterUrl = poster
+            this.quality = quality
+        }
+    }
 }
 
 
