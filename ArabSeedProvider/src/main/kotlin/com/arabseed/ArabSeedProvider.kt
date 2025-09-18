@@ -186,7 +186,7 @@ override suspend fun load(url: String): LoadResponse {
         }
         return true
     }*/
-    override suspend fun loadLinks(
+   override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -194,24 +194,20 @@ override suspend fun load(url: String): LoadResponse {
 ): Boolean {
     val doc = app.get(data).document
 
-    // Get CSRF token if it exists in the page (usually in a hidden input or meta)
     val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
         ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
         ?: ""
 
-    // Collect post_id from servers list
     val servers = doc.select("div.servers__list li").mapNotNull { li ->
-        val post = li.attr("data-post")
-        val server = li.attr("data-server")
+        val postId = li.attr("data-post")
         val quality = li.attr("data-qu")
-        if (post.isNotBlank() && quality.isNotBlank()) {
-            Triple(post, quality, csrfToken)
+        if (postId.isNotBlank() && quality.isNotBlank()) {
+            Triple(postId, quality, csrfToken)
         } else null
     }
 
     if (servers.isEmpty()) return false
 
-    // Loop through each server + quality
     for ((postId, quality, token) in servers) {
         try {
             val resp = app.post(
@@ -226,16 +222,36 @@ override suspend fun load(url: String): LoadResponse {
 
             val body = resp.text
             if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = JSONObject(body)
-                val serverUrl = json.optString("server")
-             //   val json = parseJson(body) // Use your JSON parser
-             //   val serverUrl = json["server"]?.toString()
-                if (!serverUrl.isNullOrBlank()) {
-                    loadExtractor(serverUrl, data, subtitleCallback, callback)
+                val json = parseJson(body) // your JSON parser
+                val iframeUrl = json["server"]?.toString()
+
+                if (!iframeUrl.isNullOrBlank()) {
+                    // 1. Load the iframe
+                    val iframeDoc = app.get(iframeUrl, referer = data).document
+
+                    // 2. Extract direct <source> links if present
+                    iframeDoc.select("source").forEach { sourceEl ->
+                        val src = sourceEl.attr("src")
+                        if (src.isNotBlank()) {
+                            val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = this.name,
+                                    name = label,
+                                    url = src,
+                                    type = ExtractorLinkType.VIDEO
+                                )
+                            )
+                        }
+                    }
+
+                    // 3. Also pass iframe to other extractors
+                    loadExtractor(iframeUrl, data, subtitleCallback, callback)
                 }
             }
+
         } catch (e: Exception) {
-            println("Failed to load post=$postId quality=$quality -> ${e.message}")
+            println("Failed post=$postId quality=$quality -> ${e.message}")
         }
     }
 
