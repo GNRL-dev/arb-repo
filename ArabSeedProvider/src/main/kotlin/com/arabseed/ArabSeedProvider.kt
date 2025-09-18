@@ -5,6 +5,9 @@ import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 import android.net.Uri
 import org.json.JSONObject
+import android.widget.ImageView
+import coil.load
+import android.util.Log
 
 class ArabSeed : MainAPI() {
     override var lang = "ar"
@@ -14,32 +17,20 @@ class ArabSeed : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
 
     // --- Parse search items ---
-    /*private fun Element.toSearchResponse(): SearchResponse? {
-        val href = attr("href") ?: return null
-        val title = selectFirst("h3")?.text() ?: attr("title") ?: return null
-        val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
-            Uri.encode(it, "@")
-        }
+    private fun Element.toSearchResponse(): SearchResponse? {
+        val href = this.attr("href") ?: return null
+        val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+
+        // Use thumbnail poster, but clean suffix
+        val posterUrl = selectFirst(".post__image img")?.attr("src")
+            ?.replace("-304x450.webp", ".jpg")
+
+        Log.d("ArabSeedProvider", "Parsed search item: title=$title, posterUrl=$posterUrl")
 
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-            this.posterUrl = poster
+            this.posterUrl = posterUrl
         }
-    }*/
-  private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-
-    // Use thumbnail poster, but clean suffix
-    val posterUrl = selectFirst(".post__image img")?.attr("src")
-        ?.replace("-304x450.webp", ".jpg")
-
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = posterUrl
     }
-}
-
-
-
 
     // --- Home categories ---
     override val mainPage = mainPageOf(
@@ -68,199 +59,143 @@ class ArabSeed : MainAPI() {
         val doc = app.get(url).document
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
-  /*  private fun parseDuration(text: String): Int? {
-    // Arabic: "120 دقيقة"
-    Regex("(\\d+)\\s*دقيقة").find(text)?.let { return it.groupValues[1].toIntOrNull() }
-
-    // Arabic: "2 ساعة"
-    Regex("(\\d+)\\s*ساعة").find(text)?.let { return (it.groupValues[1].toIntOrNull() ?: 0) * 60 }
-
-    // English: "2h 15m"
-    Regex("(\\d+)h\\s*(\\d+)m").find(text)?.let {
-        val h = it.groupValues[1].toIntOrNull() ?: 0
-        val m = it.groupValues[2].toIntOrNull() ?: 0
-        return h * 60 + m
-    }
-
-    // English: "90m"
-    Regex("(\\d+)m").find(text)?.let { return it.groupValues[1].toIntOrNull() }
-
-    return null
-}*/
-
 
     // --- Load details ---
-override suspend fun load(url: String): LoadResponse {
-    val doc = app.get(url).document
+    override suspend fun load(url: String): LoadResponse {
+        val doc = app.get(url).document
 
-    val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
-        ?: doc.selectFirst("title")?.text().orEmpty()
-    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
-    val plot = doc.selectFirst("div.post__story p")?.text()
-        ?: doc.selectFirst("meta[name=description]")?.attr("content")
+        val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: doc.selectFirst("title")?.text().orEmpty()
+        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val plot = doc.selectFirst("div.post__story p")?.text()
+            ?: doc.selectFirst("meta[name=description]")?.attr("content")
 
-    val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
-    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-  //  val durationText = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
-  //  val duration = durationText?.let { parseDuration(it) }
+        val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
+        val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
 
-    // Episodes or movie
- /*   val episodes = doc.select("ul.episodes__list li a").map {
-        newEpisode(it.attr("href")) {
-            this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+        Log.d("ArabSeedProvider", "Loading details: title=$title, posterUrl=$poster")
+
+        val episodes = doc.select("ul.episodes__list li a").map {
+            val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+            val cleanName = rawName.replace(Regex("(?<=\\D)(?=\\d)"), " ")
+
+            newEpisode(it.attr("href")) {
+                this.name = cleanName
+            }
+        }.ifEmpty {
+            doc.select("a.watch__btn").map {
+                newEpisode(it.attr("href")) {
+                    this.name = "مشاهدة الان"
+                }
+            }
         }
-    }.ifEmpty {
-        doc.select("a.watch__btn").map {
-            newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
-        }
-    }*/
-    val episodes = doc.select("ul.episodes__list li a").map {
-    val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
 
-    // Ensure spacing: "الحلقة1" → "الحلقة 1"
-    val cleanName = rawName.replace(Regex("(?<=\\D)(?=\\d)"), " ")
-
-    newEpisode(it.attr("href")) {
-        this.name = cleanName
-    }
-}.ifEmpty {
-    doc.select("a.watch__btn").map {
-        newEpisode(it.attr("href")) {
-            this.name = "مشاهدة الان"
-        }
-    }
-}
-
-
-    return if (episodes.size > 1) {
-        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-          //  this.duration = duration
-        }
-    } else {
-        newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-//            this.duration = duration
+        return if (episodes.size > 1) {
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.plot = plot
+                this.tags = genres
+                this.year = year
+            }
+        } else {
+            newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.plot = plot
+                this.tags = genres
+                this.year = year
+            }
         }
     }
-}
 
     // --- Extract links ---
-   /* override suspend fun loadLinks(
+    override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val doc = app.get(data).document
-        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-            ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-            ?: return false
 
-        val watchDoc = app.get(watchUrl, referer = mainUrl).document
-        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+        val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
+            ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
+            ?: ""
 
-        for (iframe in iframes) {
-            val iframeDoc = app.get(iframe, referer = watchUrl).document
-
-            iframeDoc.select("source").forEach { sourceEl ->
-                val src = sourceEl.attr("src")
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "Direct",
-                        url = src,
-                        type = ExtractorLinkType.VIDEO
-                    )
-                )
-            }
-
-            // hand off to extractors
-            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
+        val servers = doc.select("div.servers__list li").mapNotNull { li ->
+            val postId = li.attr("data-post")
+            val quality = li.attr("data-qu")
+            if (postId.isNotBlank() && quality.isNotBlank()) {
+                Triple(postId, quality, csrfToken)
+            } else null
         }
-        return true
-    }*/
- override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    val doc = app.get(data).document
 
-    val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
-        ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
-        ?: ""
+        if (servers.isEmpty()) return false
 
-    val servers = doc.select("div.servers__list li").mapNotNull { li ->
-        val postId = li.attr("data-post")
-        val quality = li.attr("data-qu")
-        if (postId.isNotBlank() && quality.isNotBlank()) {
-            Triple(postId, quality, csrfToken)
-        } else null
-    }
+        for ((postId, quality, token) in servers) {
+            try {
+                val resp = app.post(
+                    url = "https://a.asd.homes/get__quality__servers/",
+                    data = mapOf(
+                        "post_id" to postId,
+                        "quality" to quality,
+                        "csrf_token" to token
+                    ),
+                    referer = data
+                )
 
-    if (servers.isEmpty()) return false
+                val body = resp.text
+                if (body.isNotBlank() && body.trim().startsWith("{")) {
+                    val json = JSONObject(body)
+                    val iframeUrl = json.optString("server", null)
 
-    for ((postId, quality, token) in servers) {
-        try {
-            val resp = app.post(
-                url = "https://a.asd.homes/get__quality__servers/",
-                data = mapOf(
-                    "post_id" to postId,
-                    "quality" to quality,
-                    "csrf_token" to token
-                ),
-                referer = data
-            )
+                    if (!iframeUrl.isNullOrBlank()) {
+                        // 1. Load the iframe
+                        val iframeDoc = app.get(iframeUrl, referer = data).document
 
-            val body = resp.text
-            if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = JSONObject(body)
-                val iframeUrl = json.optString("server", null)
-
-                if (!iframeUrl.isNullOrBlank()) {
-                    // 1. Load the iframe
-                    val iframeDoc = app.get(iframeUrl, referer = data).document
-
-                    // 2. Extract direct <source> links if present
-                    iframeDoc.select("source").forEach { sourceEl ->
-                        val src = sourceEl.attr("src")
-                        if (src.isNotBlank()) {
-                            val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = this.name,
-                                    name = label,
-                                    url = src,
-                                    type = ExtractorLinkType.VIDEO
+                        // 2. Extract direct <source> links if present
+                        iframeDoc.select("source").forEach { sourceEl ->
+                            val src = sourceEl.attr("src")
+                            if (src.isNotBlank()) {
+                                val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
+                                callback.invoke(
+                                    newExtractorLink(
+                                        source = this.name,
+                                        name = label,
+                                        url = src,
+                                        type = ExtractorLinkType.VIDEO
+                                    )
                                 )
-                            )
+                            }
                         }
-                    }
 
-                    // 3. Also pass iframe to other extractors
-                    loadExtractor(iframeUrl, data, subtitleCallback, callback)
+                        // 3. Also pass iframe to other extractors
+                        loadExtractor(iframeUrl, data, subtitleCallback, callback)
+                    }
+                }
+
+            } catch (e: Exception) {
+                println("❌ Failed post=$postId quality=$quality -> ${e.message}")
+                try {
+                    println("🔍 Raw response body: ${app.lastResponse?.text ?: "N/A"}")
+                } catch (_: Exception) {
+                    println("⚠️ Could not log raw body.")
                 }
             }
-
-        } catch (e: Exception) {
-            println("❌ Failed post=$postId quality=$quality -> ${e.message}")
-            try {
-                // attempt to log the raw body if available
-                println("🔍 Raw response body: ${app.lastResponse?.text ?: "N/A"}")
-            } catch (_: Exception) {
-                println("⚠️ Could not log raw body.")
-            }
         }
-    }
 
-    return true
+        return true
+    }
 }
+
+// --- Safe Coil Loader Extension ---
+fun ImageView.safeLoad(url: String?, placeholder: Int? = null) {
+    if (!url.isNullOrBlank()) {
+        Log.d("CoilDebug", "Loading image: $url")
+        this.load(url) {
+            placeholder?.let { placeholder(it) }
+            error(placeholder ?: 0)
+        }
+    } else {
+        Log.e("CoilDebug", "⚠️ Tried to load invalid image URL: $url")
+        placeholder?.let { this.setImageResource(it) }
+    }
 }
