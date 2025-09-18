@@ -107,7 +107,7 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Extract links with debug ---
-        override suspend fun loadLinks(
+      override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -115,34 +115,72 @@ class ArabSeed : MainAPI() {
 ): Boolean {
     println("ArabSeedProvider: 🔎 loadLinks called with data=$data")
 
-    val doc = app.get(data).document
-    println("ArabSeedProvider: ✅ Loaded main page, title=${doc.selectFirst("title")?.text()}")
+    var foundAny = false
 
+    // --- Option A: One-Link fallback (always works) ---
+    val doc = app.get(data).document
+    val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
+        ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
+
+    if (!watchUrl.isNullOrBlank()) {
+        println("ArabSeedProvider: 🎬 Found watch URL=$watchUrl")
+
+        val watchDoc = app.get(watchUrl, referer = mainUrl).document
+        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+        println("ArabSeedProvider: ➡️ Found ${iframes.size} iframe(s) from watch page")
+
+        for (iframe in iframes) {
+            println("ArabSeedProvider: 🌐 Loading iframe=$iframe")
+            val iframeDoc = app.get(iframe, referer = watchUrl).document
+
+            val sources = iframeDoc.select("source")
+            if (sources.isEmpty()) {
+                println("ArabSeedProvider: ❌ No <source> in iframe=$iframe")
+            }
+
+            sources.forEach { sourceEl ->
+                val src = sourceEl.attr("src")
+                if (src.isNotBlank()) {
+                    println("ArabSeedProvider: ✅ Direct link=$src")
+                    foundAny = true
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "Direct",
+                            url = src,
+                            type = ExtractorLinkType.VIDEO
+                        )
+                    )
+                }
+            }
+
+            // Hand off iframe to extractors
+            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
+        }
+    } else {
+        println("ArabSeedProvider: ❌ No watch button found")
+    }
+
+    // --- Option B: Multi-server / multi-quality (extra links) ---
     val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
         ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
         ?: ""
-    println("ArabSeedProvider: 🔑 CSRF token=$csrfToken")
 
     val servers = doc.select("div.servers__list li").mapNotNull { li ->
         val postId = li.attr("data-post")
         val quality = li.attr("data-qu")
-        println("ArabSeedProvider: ➡️ Found server entry: postId=$postId, quality=$quality")
         if (postId.isNotBlank() && quality.isNotBlank()) {
             Triple(postId, quality, csrfToken)
         } else null
     }
 
     if (servers.isEmpty()) {
-        println("ArabSeedProvider: ❌ No servers found on page")
-        return false
+        println("ArabSeedProvider: ❌ No servers found in servers__list")
     }
-
-    var foundAny = false
 
     for ((postId, quality, token) in servers) {
         try {
-            println("ArabSeedProvider: 🌐 Requesting server for postId=$postId, quality=$quality")
-
+            println("ArabSeedProvider: 🌐 Requesting server=$postId quality=$quality")
             val resp = app.post(
                 url = "$mainUrl/get__quality__servers/",
                 data = mapOf(
@@ -154,8 +192,6 @@ class ArabSeed : MainAPI() {
             )
 
             val body = resp.text
-            println("ArabSeedProvider: 📩 JSON response (first 200 chars): ${body.take(200)}")
-
             if (body.isNotBlank() && body.trim().startsWith("{")) {
                 val json = JSONObject(body)
                 val iframeUrl = json.optString("server", null)
@@ -163,73 +199,46 @@ class ArabSeed : MainAPI() {
 
                 if (!iframeUrl.isNullOrBlank()) {
                     val iframeDoc = app.get(iframeUrl, referer = data).document
-                    println("ArabSeedProvider: ✅ Loaded iframe, title=${iframeDoc.selectFirst("title")?.text()}")
-
                     val sources = iframeDoc.select("source")
+
                     if (sources.isEmpty()) {
-                        println("ArabSeedProvider: ❌ No <source> tags in iframe. Trying regex fallback…")
+                        println("ArabSeedProvider: ❌ No <source> in iframe (multi-server)")
+                    }
 
-                        // --- Regex fallback (UQLOAD style) ---
-                        val regex = Regex("file\\s*[:=]\\s*\"(https[^\"]+)\"")
-                        val match = regex.find(iframeDoc.outerHtml())
-                        if (match != null) {
-                            val videoUrl = match.groupValues[1]
-                            println("ArabSeedProvider: 🎥 Regex extracted video=$videoUrl")
-
+                    sources.forEach { sourceEl ->
+                        val src = sourceEl.attr("src")
+                        val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
+                        if (src.isNotBlank()) {
+                            println("ArabSeedProvider: ✅ Multi-server source=$src label=$label")
                             foundAny = true
                             callback.invoke(
                                 newExtractorLink(
                                     source = this.name,
-                                    name = "${quality}p Regex",
-                                    url = videoUrl,
+                                    name = label,
+                                    url = src,
                                     type = ExtractorLinkType.VIDEO
                                 )
                             )
-                        } else {
-                            println("ArabSeedProvider: ❌ Regex fallback found nothing")
-                        }
-                    } else {
-                        sources.forEach { sourceEl ->
-                            val src = sourceEl.attr("src")
-                            val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                            println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
-
-                            if (src.isNotBlank()) {
-                                foundAny = true
-                                callback.invoke(
-                                    newExtractorLink(
-                                        source = this.name,
-                                        name = label,
-                                        url = src,
-                                        type = ExtractorLinkType.VIDEO
-                                    )
-                                )
-                            }
                         }
                     }
 
-                    println("ArabSeedProvider: ➡️ Passing iframe to other extractors: $iframeUrl")
+                    // Always let external extractors try
                     loadExtractor(iframeUrl, data, subtitleCallback, callback)
-                } else {
-                    println("ArabSeedProvider: ❌ iframeUrl missing in JSON")
                 }
-            } else {
-                println("ArabSeedProvider: ❌ Invalid JSON response: $body")
             }
-
         } catch (e: Exception) {
-            println("ArabSeedProvider: 💥 Exception for post=$postId quality=$quality -> ${e.message}")
+            println("ArabSeedProvider: 💥 Failed post=$postId quality=$quality -> ${e.message}")
         }
     }
 
     if (!foundAny) {
-        println("ArabSeedProvider: ❌ Finished but no playable links found")
+        println("ArabSeedProvider: ❌ No direct links extracted (only external extractors may succeed)")
     } else {
-        println("ArabSeedProvider: ✅ At least one playable link extracted")
+        println("ArabSeedProvider: ✅ At least one direct link extracted")
     }
 
     return foundAny
 }
-
+  
 
 }
