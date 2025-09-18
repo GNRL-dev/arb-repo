@@ -80,11 +80,11 @@ override suspend fun load(url: String): LoadResponse {
     // --- Title & poster ---
     val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
         ?: doc.selectFirst("title")?.text().orEmpty()
-  //  val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
 
-    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.let {
-    Uri.encode(it, "@")
-    }
+   // val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.let {
+  // Uri.encode(it, "@")
+  //  }
     // Debugging
     println("=== ArabSeed DEBUG (load) ===")
     println("Title: $title")
@@ -100,7 +100,7 @@ override suspend fun load(url: String): LoadResponse {
     val year = doc.selectFirst(".info__area li:contains(سنة العرض)")?.select("a")?.text()?.toIntOrNull()
     val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
   //  val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
-    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.ownText()
+    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
 
     // --- Episodes ---
     val episodes = when {
@@ -131,7 +131,11 @@ override suspend fun load(url: String): LoadResponse {
     newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-        this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
+       // this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
+       this.plot = listOfNotNull(
+    plot,
+    "⏱️ المدة: $duration",
+).joinToString("\n")
         this.tags = genres
         this.year = year
     }
@@ -139,7 +143,11 @@ override suspend fun load(url: String): LoadResponse {
     CompatMovieLoadResponse(title, url, TvType.Movie, url) {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-        this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
+      //  this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
+        this.plot = listOfNotNull(
+    plot,
+    "⏱️ المدة: $duration",
+).joinToString("\n")
         this.tags = genres
         this.year = year
     }
