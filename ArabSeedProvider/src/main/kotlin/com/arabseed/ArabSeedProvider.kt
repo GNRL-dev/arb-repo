@@ -24,24 +24,19 @@ class ArabSeed : MainAPI() {
             this.posterUrl = poster
         }
     }*/
-   private fun Element.toSearchResponse(): SearchResponse? {
+  private fun Element.toSearchResponse(): SearchResponse? {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
-    // Go into detail page to get the good poster
-    val posterUrl = try {
-        val detailDoc = app.get(fixUrl(href)).document
-        detailDoc.selectFirst("meta[property=og:image]")?.attr("content")
-    } catch (e: Exception) {
-        null
-    }
-
-    println("=== ArabSeed DEBUG poster (search/home): $posterUrl")
+    // Use thumbnail poster, but clean suffix
+    val posterUrl = selectFirst(".post__image img")?.attr("src")
+        ?.replace("-304x450.webp", ".jpg")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = posterUrl
     }
 }
+
 
 
 
