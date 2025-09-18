@@ -28,15 +28,21 @@ class ArabSeed : MainAPI() {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
-    val posterUrl = selectFirst(".post__image img")?.attr("src")
-        ?.replace("-304x450.webp", ".jpg")
+    // Go into detail page to get the good poster
+    val posterUrl = try {
+        val detailDoc = app.get(fixUrl(href)).document
+        detailDoc.selectFirst("meta[property=og:image]")?.attr("content")
+    } catch (e: Exception) {
+        null
+    }
 
-    println("=== ArabSeed DEBUG fixed poster: $posterUrl")
+    println("=== ArabSeed DEBUG poster (search/home): $posterUrl")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = posterUrl
     }
 }
+
 
 
     // --- Home categories ---
