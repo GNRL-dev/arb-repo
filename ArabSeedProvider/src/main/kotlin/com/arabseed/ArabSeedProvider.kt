@@ -151,7 +151,7 @@ override suspend fun load(url: String): LoadResponse {
 }
 
     // --- Extract links ---
-    override suspend fun loadLinks(
+   /* override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -184,5 +184,59 @@ override suspend fun load(url: String): LoadResponse {
             loadExtractor(iframe, watchUrl, subtitleCallback, callback)
         }
         return true
+    }*/
+    override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    val doc = app.get(data).document
+
+    // Get CSRF token if it exists in the page (usually in a hidden input or meta)
+    val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
+        ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
+        ?: ""
+
+    // Collect post_id from servers list
+    val servers = doc.select("div.servers__list li").mapNotNull { li ->
+        val post = li.attr("data-post")
+        val server = li.attr("data-server")
+        val quality = li.attr("data-qu")
+        if (post.isNotBlank() && quality.isNotBlank()) {
+            Triple(post, quality, csrfToken)
+        } else null
     }
+
+    if (servers.isEmpty()) return false
+
+    // Loop through each server + quality
+    for ((postId, quality, token) in servers) {
+        try {
+            val resp = app.post(
+                url = "https://a.asd.homes/get__quality__servers/",
+                data = mapOf(
+                    "post_id" to postId,
+                    "quality" to quality,
+                    "csrf_token" to token
+                ),
+                referer = data
+            )
+
+            val body = resp.text
+            if (body.isNotBlank() && body.trim().startsWith("{")) {
+                val json = parseJson(body) // Use your JSON parser
+                val serverUrl = json["server"]?.toString()
+                if (!serverUrl.isNullOrBlank()) {
+                    loadExtractor(serverUrl, data, subtitleCallback, callback)
+                }
+            }
+        } catch (e: Exception) {
+            println("Failed to load post=$postId quality=$quality -> ${e.message}")
+        }
+    }
+
+    return true
+}
+
 }
