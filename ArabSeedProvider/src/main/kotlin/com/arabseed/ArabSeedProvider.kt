@@ -104,7 +104,7 @@ override suspend fun load(url: String): LoadResponse {
   //  val duration = durationText?.let { parseDuration(it) }
 
     // Episodes or movie
-    val episodes = doc.select("ul.episodes__list li a").map {
+ /*   val episodes = doc.select("ul.episodes__list li a").map {
         newEpisode(it.attr("href")) {
             this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
         }
@@ -112,7 +112,24 @@ override suspend fun load(url: String): LoadResponse {
         doc.select("a.watch__btn").map {
             newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
         }
+    }*/
+    val episodes = doc.select("ul.episodes__list li a").map {
+    val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+
+    // Ensure spacing: "الحلقة1" → "الحلقة 1"
+    val cleanName = rawName.replace(Regex("(?<=\\D)(?=\\d)"), " ")
+
+    newEpisode(it.attr("href")) {
+        this.name = cleanName
     }
+}.ifEmpty {
+    doc.select("a.watch__btn").map {
+        newEpisode(it.attr("href")) {
+            this.name = "مشاهدة الان"
+        }
+    }
+}
+
 
     return if (episodes.size > 1) {
         newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
