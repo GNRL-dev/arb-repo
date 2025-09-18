@@ -13,7 +13,7 @@ class ArabSeed : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
 
     // --- Parse search items ---
-    private fun Element.toSearchResponse(): SearchResponse? {
+    /*private fun Element.toSearchResponse(): SearchResponse? {
         val href = attr("href") ?: return null
         val title = selectFirst("h3")?.text() ?: attr("title") ?: return null
         val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
@@ -23,7 +23,24 @@ class ArabSeed : MainAPI() {
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
             this.posterUrl = poster
         }
+    }*/
+    private fun Element.toSearchResponse(): SearchResponse? {
+    val href = this.attr("href") ?: return null
+    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+
+    val posterUrl = selectFirst(".post__image img")?.attr("src")
+
+    println("=== ArabSeed DEBUG card poster: $posterUrl")
+
+    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+        this.posterUrl = posterUrl
+        this.posterHeaders = mapOf(
+            "Referer" to "https://a.asd.homes",
+            "User-Agent" to "Mozilla/5.0"
+        )
     }
+}
+
 
     // --- Home categories ---
     override val mainPage = mainPageOf(
