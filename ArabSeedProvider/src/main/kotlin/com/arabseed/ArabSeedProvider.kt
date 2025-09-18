@@ -56,9 +56,11 @@ private fun Element.toSearchResponse(): SearchResponse? {
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
     // Grab poster and sanitize invalid characters like '@'
+    val posterurl = poster.
     val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
         Uri.encode(it, "@") // encodes everything except '@'
     }
+    
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = poster
@@ -134,8 +136,8 @@ override suspend fun load(url: String): LoadResponse {
     // --- Extra info ---
     val year = doc.selectFirst(".info__area li:contains(سنة العرض)")?.select("a")?.text()?.toIntOrNull()
     val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-    val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
-    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.ownText()
+  //  val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
+    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()?.toIntOrNull()
 
     // --- Episodes ---
     val episodes = when {
