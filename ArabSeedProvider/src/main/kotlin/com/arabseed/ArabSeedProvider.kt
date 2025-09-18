@@ -192,33 +192,32 @@ override suspend fun load(url: String): LoadResponse {
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    Log.d("ArabSeedProvider", "🔎 loadLinks called with data=$data")
+    println("ArabSeedProvider: 🔎 loadLinks called with data=$data")
 
     val doc = app.get(data).document
-    Log.d("ArabSeedProvider", "✅ Loaded main page, title=${doc.selectFirst("title")?.text()}")
-
     val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
         ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
         ?: ""
-    Log.d("ArabSeedProvider", "🔑 CSRF token=$csrfToken")
+    println("ArabSeedProvider: 🔑 CSRF token=$csrfToken")
 
     val servers = doc.select("div.servers__list li").mapNotNull { li ->
         val postId = li.attr("data-post")
         val quality = li.attr("data-qu")
-        Log.d("ArabSeedProvider", "➡️ Found server entry: postId=$postId, quality=$quality")
+        println("ArabSeedProvider: ➡️ Found server entry: postId=$postId, quality=$quality")
         if (postId.isNotBlank() && quality.isNotBlank()) {
             Triple(postId, quality, csrfToken)
         } else null
     }
 
     if (servers.isEmpty()) {
-        Log.e("ArabSeedProvider", "❌ No servers found on page")
+        println("ArabSeedProvider: ❌ No servers found on page")
         return false
     }
 
     for ((postId, quality, token) in servers) {
         try {
-            Log.d("ArabSeedProvider", "🌐 Requesting server for postId=$postId, quality=$quality")
+            println("ArabSeedProvider: 🌐 Requesting server for postId=$postId, quality=$quality")
+
             val resp = app.post(
                 url = "https://a.asd.homes/get__quality__servers/",
                 data = mapOf(
@@ -230,51 +229,49 @@ override suspend fun load(url: String): LoadResponse {
             )
 
             val body = resp.text
-            Log.d("ArabSeedProvider", "📩 Response body (first 200 chars): ${body.take(200)}")
+            println("ArabSeedProvider: 📩 Response body (first 200 chars): ${body.take(200)}")
 
             if (body.isNotBlank() && body.trim().startsWith("{")) {
                 val json = JSONObject(body)
                 val iframeUrl = json.optString("server", null)
-                Log.d("ArabSeedProvider", "🖼️ Extracted iframeUrl=$iframeUrl")
+                println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$iframeUrl")
 
                 if (!iframeUrl.isNullOrBlank()) {
                     val iframeDoc = app.get(iframeUrl, referer = data).document
-                    Log.d("ArabSeedProvider", "✅ Loaded iframe page, title=${iframeDoc.selectFirst("title")?.text()}")
+                    println("ArabSeedProvider: ✅ Loaded iframe title=${iframeDoc.selectFirst("title")?.text()}")
 
                     iframeDoc.select("source").forEach { sourceEl ->
                         val src = sourceEl.attr("src")
                         val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                        Log.d("ArabSeedProvider", "🎥 Found <source>: src=$src, label=$label")
+                        println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
+
                         if (src.isNotBlank()) {
-                            val link = newExtractorLink(
-                                source = this.name,
-                                name = label,
-                                url = src,
-                                type = ExtractorLinkType.VIDEO
+                            callback.invoke(
+                                newExtractorLink(
+                                    source = this.name,
+                                    name = label,
+                                    url = src,
+                                    type = ExtractorLinkType.VIDEO
+                                )
                             )
-                            callback.invoke(link)
                         }
                     }
 
-                    Log.d("ArabSeedProvider", "➡️ Handing iframe to other extractors: $iframeUrl")
+                    println("ArabSeedProvider: ➡️ Passing iframe to extractors: $iframeUrl")
                     loadExtractor(iframeUrl, data, subtitleCallback, callback)
                 } else {
-                    Log.e("ArabSeedProvider", "❌ iframeUrl missing in JSON")
+                    println("ArabSeedProvider: ❌ iframeUrl missing in JSON")
                 }
             } else {
-                Log.e("ArabSeedProvider", "❌ Invalid JSON response: $body")
+                println("ArabSeedProvider: ❌ Invalid JSON response: $body")
             }
 
         } catch (e: Exception) {
-            Log.e("ArabSeedProvider", "💥 Failed post=$postId quality=$quality -> ${e.message}")
-            try {
-                Log.e("ArabSeedProvider", "🔍 Raw response body: ${app.lastResponse?.text ?: "N/A"}")
-            } catch (_: Exception) {
-                Log.e("ArabSeedProvider", "⚠️ Could not log raw body.")
-            }
+            println("ArabSeedProvider: 💥 Failed post=$postId quality=$quality -> ${e.message}")
         }
     }
 
     return true
 }
+
 }
