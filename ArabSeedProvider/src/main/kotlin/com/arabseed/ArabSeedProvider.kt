@@ -14,41 +14,6 @@ class ArabSeed : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
     private val cfKiller = CloudflareKiller()
 
-    // --- Convert card element into SearchResponse ---
-   /* private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-    val poster = selectFirst(".post__image img")?.attr("src")
-
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = poster
-        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap() // 🔥 required for thumbnails
-    }
-}*/
-
-/*private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-
-    // Grab poster
-    val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }
-
-    // Debugging output
-    println("=== ArabSeed DEBUG ===")
-    println("Title: $title")
-    println("URL: $href")
-    println("Poster raw: ${selectFirst(".post__image img")?.attr("src")}")
-    println("Poster fixed: $poster")
-
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = poster
-        this.posterHeaders = mapOf(
-            "Referer" to mainUrl,
-            "User-Agent" to USER_AGENT,
-        ) + cfKiller.getCookieHeaders(mainUrl).toMap()
-    }
-}
-*/
 
 // --- Inside toSearchResponse() ---
 private fun Element.toSearchResponse(): SearchResponse? {
@@ -56,12 +21,10 @@ private fun Element.toSearchResponse(): SearchResponse? {
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
     // Grab poster and sanitize invalid characters like '@'
-    val posterUrl = poster.attr("src")
-    val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
+   val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
         Uri.encode(it, "@") // encodes everything except '@'
     }
     
-
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
