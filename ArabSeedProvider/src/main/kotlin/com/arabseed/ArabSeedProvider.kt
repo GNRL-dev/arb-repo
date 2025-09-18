@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 import android.net.Uri
+import org.json.JSONObject
 
 class ArabSeed : MainAPI() {
     override var lang = "ar"
@@ -225,8 +226,10 @@ override suspend fun load(url: String): LoadResponse {
 
             val body = resp.text
             if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = parseJson(body) // Use your JSON parser
-                val serverUrl = json["server"]?.toString()
+                val json = JSONObject(body)
+                val serverUrl = json.optString("server")
+             //   val json = parseJson(body) // Use your JSON parser
+             //   val serverUrl = json["server"]?.toString()
                 if (!serverUrl.isNullOrBlank()) {
                     loadExtractor(serverUrl, data, subtitleCallback, callback)
                 }
