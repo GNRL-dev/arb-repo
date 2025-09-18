@@ -54,43 +54,46 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Load details ---
-    override suspend fun load(url: String): LoadResponse {
-        val doc = app.get(url).document
+   override suspend fun load(url: String): LoadResponse {
+    val doc = app.get(url).document
 
-        val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
-            ?: doc.selectFirst("title")?.text().orEmpty()
-        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
-        val plot = doc.selectFirst("div.post__story p")?.text()
-            ?: doc.selectFirst("meta[name=description]")?.attr("content")
+    val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+        ?: doc.selectFirst("title")?.text().orEmpty()
+    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+    val plot = doc.selectFirst("div.post__story p")?.text()
+        ?: doc.selectFirst("meta[name=description]")?.attr("content")
 
-        val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
-        val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-        val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
+    val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
+    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
+    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
 
-        // Episodes or movie
-        val episodes = doc.select("ul.episodes__list li a").map {
-            newEpisode(it.attr("href")) {
-                this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
-            }
-        }.ifEmpty {
-            doc.select("a.watch__btn").map {
-                newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
-            }
+    // Episodes or movie
+    val episodes = doc.select("ul.episodes__list li a").map {
+        newEpisode(it.attr("href")) {
+            this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
         }
+    }.ifEmpty {
+        doc.select("a.watch__btn").map {
+            newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
+        }
+    }
 
-        val commonBuilder: (LoadResponseBuilder.() -> Unit) = {
+    return if (episodes.size > 1) {
+        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
             this.posterUrl = poster
             this.plot = listOfNotNull(plot, "⏱️ المدة: $duration").joinToString("\n")
             this.tags = genres
             this.year = year
         }
-
-        return if (episodes.size > 1) {
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes, commonBuilder)
-        } else {
-            newMovieLoadResponse(title, url, TvType.Movie, url, commonBuilder)
+    } else {
+        newMovieLoadResponse(title, url, TvType.Movie, url) {
+            this.posterUrl = poster
+            this.plot = listOfNotNull(plot, "⏱️ المدة: $duration").joinToString("\n")
+            this.tags = genres
+            this.year = year
         }
     }
+}
 
     // --- Extract links ---
     override suspend fun loadLinks(
