@@ -1,4 +1,4 @@
-package com.arabseed
+epackage com.arabseed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
@@ -82,9 +82,6 @@ override suspend fun load(url: String): LoadResponse {
         ?: doc.selectFirst("title")?.text().orEmpty()
     val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
 
-   // val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")?.let {
-  // Uri.encode(it, "@")
-  //  }
     // Debugging
     println("=== ArabSeed DEBUG (load) ===")
     println("Title: $title")
