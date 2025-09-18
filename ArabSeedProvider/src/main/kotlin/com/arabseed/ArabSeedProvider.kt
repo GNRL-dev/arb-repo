@@ -28,22 +28,15 @@ class ArabSeed : MainAPI() {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
-    // ✅ Instead of using <img src>, go into the detail page and fetch og:image
-    val posterUrl = try {
-        val detailDoc = app.get(fixUrl(href)).document
-        detailDoc.selectFirst("meta[property=og:image]")?.attr("content")
-    } catch (e: Exception) {
-        null
-    }
+    val posterUrl = selectFirst(".post__image img")?.attr("src")
+        ?.replace("-304x450.webp", ".jpg")
 
-    println("=== ArabSeed DEBUG og:image poster: $posterUrl")
+    println("=== ArabSeed DEBUG fixed poster: $posterUrl")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = posterUrl
     }
 }
-
-
 
 
     // --- Home categories ---
