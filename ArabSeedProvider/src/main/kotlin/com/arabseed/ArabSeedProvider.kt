@@ -24,22 +24,20 @@ class ArabSeed : MainAPI() {
             this.posterUrl = poster
         }
     }*/
-    private fun Element.toSearchResponse(): SearchResponse? {
+   private fun Element.toSearchResponse(): SearchResponse? {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
     val posterUrl = selectFirst(".post__image img")?.attr("src")
+        ?.replace(".webp", ".jpg") // fallback if Coil chokes on webp
 
     println("=== ArabSeed DEBUG card poster: $posterUrl")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = posterUrl
-        this.posterHeaders = mapOf(
-            "Referer" to "https://a.asd.homes",
-            "User-Agent" to "Mozilla/5.0"
-        )
     }
 }
+
 
 
     // --- Home categories ---
