@@ -1,4 +1,4 @@
-package com.arabseed
+epackage com.arabseed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
@@ -63,9 +63,12 @@ class ArabSeed : MainAPI() {
     val plot = doc.selectFirst("div.post__story p")?.text()
         ?: doc.selectFirst("meta[name=description]")?.attr("content")
 
-    val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
-    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
+val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
+val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
+
+// keep raw duration string (like "2h 15m" or "120 دقيقة")
+val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
+
 
     // Episodes or movie
     val episodes = doc.select("ul.episodes__list li a").map {
@@ -78,23 +81,28 @@ class ArabSeed : MainAPI() {
         }
     }
 
-    return if (episodes.size > 1) {
-        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-            this.duration = duration
-        }
-    } else {
-        newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-            this.duration = duration
-        }
+   return if (episodes.size > 1) {
+    newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+        this.posterUrl = poster
+        this.plot = listOfNotNull(
+            plot,
+            duration
+        ).joinToString("\n")
+        this.tags = genres
+        this.year = year
     }
+} else {
+    newMovieLoadResponse(title, url, TvType.Movie, url) {
+        this.posterUrl = poster
+        this.plot = listOfNotNull(
+            plot,
+            duration
+        ).joinToString("\n")
+        this.tags = genres
+        this.year = year
+    }
+}
+
 }
 
 
