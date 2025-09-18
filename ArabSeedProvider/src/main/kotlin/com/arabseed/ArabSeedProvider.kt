@@ -54,7 +54,7 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Load details ---
-   override suspend fun load(url: String): LoadResponse {
+ override suspend fun load(url: String): LoadResponse {
     val doc = app.get(url).document
 
     val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
@@ -81,19 +81,22 @@ class ArabSeed : MainAPI() {
     return if (episodes.size > 1) {
         newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
             this.posterUrl = poster
-            this.plot = listOfNotNull(plot, "⏱️ المدة: $duration").joinToString("\n")
+            this.plot = plot
             this.tags = genres
             this.year = year
+            this.duration = duration
         }
     } else {
         newMovieLoadResponse(title, url, TvType.Movie, url) {
             this.posterUrl = poster
-            this.plot = listOfNotNull(plot, "⏱️ المدة: $duration").joinToString("\n")
+            this.plot = plot
             this.tags = genres
             this.year = year
+            this.duration = duration
         }
     }
 }
+
 
     // --- Extract links ---
     override suspend fun loadLinks(
