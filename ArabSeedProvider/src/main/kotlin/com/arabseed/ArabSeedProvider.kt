@@ -28,15 +28,21 @@ class ArabSeed : MainAPI() {
     val href = this.attr("href") ?: return null
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
-    val posterUrl = selectFirst(".post__image img")?.attr("src")
-        ?.replace(".webp", ".jpg") // fallback if Coil chokes on webp
+    // ✅ Instead of using <img src>, go into the detail page and fetch og:image
+    val posterUrl = try {
+        val detailDoc = app.get(fixUrl(href)).document
+        detailDoc.selectFirst("meta[property=og:image]")?.attr("content")
+    } catch (e: Exception) {
+        null
+    }
 
-    println("=== ArabSeed DEBUG card poster: $posterUrl")
+    println("=== ArabSeed DEBUG og:image poster: $posterUrl")
 
     return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
         this.posterUrl = posterUrl
     }
 }
+
 
 
 
