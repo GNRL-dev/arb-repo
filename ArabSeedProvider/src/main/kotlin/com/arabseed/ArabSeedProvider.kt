@@ -131,7 +131,7 @@ override suspend fun load(url: String): LoadResponse {
     newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-        this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
+        this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
         this.tags = genres
         this.year = year
     }
@@ -139,7 +139,7 @@ override suspend fun load(url: String): LoadResponse {
     CompatMovieLoadResponse(title, url, TvType.Movie, url) {
         this.posterUrl = poster
         this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-        this.plot = listOfNotNull(plot, "المدة: $duration", "البلد: $country").joinToString("\n")
+        this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
         this.tags = genres
         this.year = year
     }
