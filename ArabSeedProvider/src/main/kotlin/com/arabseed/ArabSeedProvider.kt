@@ -186,7 +186,7 @@ override suspend fun load(url: String): LoadResponse {
         }
         return true
     }*/
-   override suspend fun loadLinks(
+  override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -222,8 +222,8 @@ override suspend fun load(url: String): LoadResponse {
 
             val body = resp.text
             if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = parseJson(body) // your JSON parser
-                val iframeUrl = json["server"]?.toString()
+                val json = JSONObject(body)
+                val iframeUrl = json.optString("server", null)
 
                 if (!iframeUrl.isNullOrBlank()) {
                     // 1. Load the iframe
