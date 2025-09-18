@@ -14,32 +14,19 @@ class ArabSeed : MainAPI() {
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
 
     // --- Parse search items ---
-    /*private fun Element.toSearchResponse(): SearchResponse? {
-        val href = attr("href") ?: return null
-        val title = selectFirst("h3")?.text() ?: attr("title") ?: return null
-        val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
-            Uri.encode(it, "@")
-        }
+    private fun Element.toSearchResponse(): SearchResponse? {
+        val href = this.attr("href") ?: return null
+        val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
+
+        val posterUrl = selectFirst(".post__image img")?.attr("src")
+            ?.replace("-304x450.webp", ".jpg")
+
+        println("ArabSeedProvider: Parsed search item -> title=$title, posterUrl=$posterUrl")
 
         return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-            this.posterUrl = poster
+            this.posterUrl = posterUrl
         }
-    }*/
-  private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-
-    // Use thumbnail poster, but clean suffix
-    val posterUrl = selectFirst(".post__image img")?.attr("src")
-        ?.replace("-304x450.webp", ".jpg")
-
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = posterUrl
     }
-}
-
-
-
 
     // --- Home categories ---
     override val mainPage = mainPageOf(
@@ -68,210 +55,142 @@ class ArabSeed : MainAPI() {
         val doc = app.get(url).document
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
-  /*  private fun parseDuration(text: String): Int? {
-    // Arabic: "120 دقيقة"
-    Regex("(\\d+)\\s*دقيقة").find(text)?.let { return it.groupValues[1].toIntOrNull() }
-
-    // Arabic: "2 ساعة"
-    Regex("(\\d+)\\s*ساعة").find(text)?.let { return (it.groupValues[1].toIntOrNull() ?: 0) * 60 }
-
-    // English: "2h 15m"
-    Regex("(\\d+)h\\s*(\\d+)m").find(text)?.let {
-        val h = it.groupValues[1].toIntOrNull() ?: 0
-        val m = it.groupValues[2].toIntOrNull() ?: 0
-        return h * 60 + m
-    }
-
-    // English: "90m"
-    Regex("(\\d+)m").find(text)?.let { return it.groupValues[1].toIntOrNull() }
-
-    return null
-}*/
-
 
     // --- Load details ---
-override suspend fun load(url: String): LoadResponse {
-    val doc = app.get(url).document
+    override suspend fun load(url: String): LoadResponse {
+        val doc = app.get(url).document
 
-    val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
-        ?: doc.selectFirst("title")?.text().orEmpty()
-    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
-    val plot = doc.selectFirst("div.post__story p")?.text()
-        ?: doc.selectFirst("meta[name=description]")?.attr("content")
+        val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: doc.selectFirst("title")?.text().orEmpty()
+        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val plot = doc.selectFirst("div.post__story p")?.text()
+            ?: doc.selectFirst("meta[name=description]")?.attr("content")
 
-    val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
-    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-  //  val durationText = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
-  //  val duration = durationText?.let { parseDuration(it) }
+        val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
+        val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
 
-    // Episodes or movie
- /*   val episodes = doc.select("ul.episodes__list li a").map {
-        newEpisode(it.attr("href")) {
-            this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+        println("ArabSeedProvider: Loading details -> title=$title, poster=$poster")
+
+        val episodes = doc.select("ul.episodes__list li a").map {
+            val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+            val cleanName = rawName.replace(Regex("(?<=\\D)(?=\\d)"), " ")
+
+            newEpisode(it.attr("href")) {
+                this.name = cleanName
+            }
+        }.ifEmpty {
+            doc.select("a.watch__btn").map {
+                newEpisode(it.attr("href")) {
+                    this.name = "مشاهدة الان"
+                }
+            }
         }
-    }.ifEmpty {
-        doc.select("a.watch__btn").map {
-            newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
-        }
-    }*/
-    val episodes = doc.select("ul.episodes__list li a").map {
-    val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
 
-    // Ensure spacing: "الحلقة1" → "الحلقة 1"
-    val cleanName = rawName.replace(Regex("(?<=\\D)(?=\\d)"), " ")
-
-    newEpisode(it.attr("href")) {
-        this.name = cleanName
-    }
-}.ifEmpty {
-    doc.select("a.watch__btn").map {
-        newEpisode(it.attr("href")) {
-            this.name = "مشاهدة الان"
-        }
-    }
-}
-
-
-    return if (episodes.size > 1) {
-        newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-          //  this.duration = duration
-        }
-    } else {
-        newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.plot = plot
-            this.tags = genres
-            this.year = year
-//            this.duration = duration
+        return if (episodes.size > 1) {
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.plot = plot
+                this.tags = genres
+                this.year = year
+            }
+        } else {
+            newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.plot = plot
+                this.tags = genres
+                this.year = year
+            }
         }
     }
-}
 
-    // --- Extract links ---
-   /* override suspend fun loadLinks(
+    // --- Extract links with debug ---
+    override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        println("ArabSeedProvider: 🔎 loadLinks called with data=$data")
+
         val doc = app.get(data).document
-        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-            ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-            ?: return false
+        println("ArabSeedProvider: ✅ Loaded main page, title=${doc.selectFirst("title")?.text()}")
 
-        val watchDoc = app.get(watchUrl, referer = mainUrl).document
-        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+        val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
+            ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
+            ?: ""
+        println("ArabSeedProvider: 🔑 CSRF token=$csrfToken")
 
-        for (iframe in iframes) {
-            val iframeDoc = app.get(iframe, referer = watchUrl).document
+        val servers = doc.select("div.servers__list li").mapNotNull { li ->
+            val postId = li.attr("data-post")
+            val quality = li.attr("data-qu")
+            println("ArabSeedProvider: ➡️ Found server entry: postId=$postId, quality=$quality")
+            if (postId.isNotBlank() && quality.isNotBlank()) {
+                Triple(postId, quality, csrfToken)
+            } else null
+        }
 
-            iframeDoc.select("source").forEach { sourceEl ->
-                val src = sourceEl.attr("src")
-                callback.invoke(
-                    newExtractorLink(
-                        source = this.name,
-                        name = "Direct",
-                        url = src,
-                        type = ExtractorLinkType.VIDEO
-                    )
+        if (servers.isEmpty()) {
+            println("ArabSeedProvider: ❌ No servers found on page")
+            return false
+        }
+
+        for ((postId, quality, token) in servers) {
+            try {
+                println("ArabSeedProvider: 🌐 Requesting server for postId=$postId, quality=$quality")
+
+                val resp = app.post(
+                    url = "$mainUrl/get__quality__servers/",
+                    data = mapOf(
+                        "post_id" to postId,
+                        "quality" to quality,
+                        "csrf_token" to token
+                    ),
+                    referer = data
                 )
-            }
 
-            // hand off to extractors
-            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
-        }
-        return true
-    }*/
- override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    println("ArabSeedProvider: 🔎 loadLinks called with data=$data")
+                val body = resp.text
+                println("ArabSeedProvider: 📩 Response body (first 200 chars): ${body.take(200)}")
 
-    val doc = app.get(data).document
-    val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
-        ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
-        ?: ""
-    println("ArabSeedProvider: 🔑 CSRF token=$csrfToken")
+                if (body.isNotBlank() && body.trim().startsWith("{")) {
+                    val json = JSONObject(body)
+                    val iframeUrl = json.optString("server", null)
+                    println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$iframeUrl")
 
-    val servers = doc.select("div.servers__list li").mapNotNull { li ->
-        val postId = li.attr("data-post")
-        val quality = li.attr("data-qu")
-        println("ArabSeedProvider: ➡️ Found server entry: postId=$postId, quality=$quality")
-        if (postId.isNotBlank() && quality.isNotBlank()) {
-            Triple(postId, quality, csrfToken)
-        } else null
-    }
+                    if (!iframeUrl.isNullOrBlank()) {
+                        val iframeDoc = app.get(iframeUrl, referer = data).document
+                        println("ArabSeedProvider: ✅ Loaded iframe, title=${iframeDoc.selectFirst("title")?.text()}")
 
-    if (servers.isEmpty()) {
-        println("ArabSeedProvider: ❌ No servers found on page")
-        return false
-    }
+                        iframeDoc.select("source").forEach { sourceEl ->
+                            val src = sourceEl.attr("src")
+                            val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
+                            println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
 
-    for ((postId, quality, token) in servers) {
-        try {
-            println("ArabSeedProvider: 🌐 Requesting server for postId=$postId, quality=$quality")
-
-            val resp = app.post(
-                url = "https://a.asd.homes/get__quality__servers/",
-                data = mapOf(
-                    "post_id" to postId,
-                    "quality" to quality,
-                    "csrf_token" to token
-                ),
-                referer = data
-            )
-
-            val body = resp.text
-            println("ArabSeedProvider: 📩 Response body (first 200 chars): ${body.take(200)}")
-
-            if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = JSONObject(body)
-                val iframeUrl = json.optString("server", null)
-                println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$iframeUrl")
-
-                if (!iframeUrl.isNullOrBlank()) {
-                    val iframeDoc = app.get(iframeUrl, referer = data).document
-                    println("ArabSeedProvider: ✅ Loaded iframe title=${iframeDoc.selectFirst("title")?.text()}")
-
-                    iframeDoc.select("source").forEach { sourceEl ->
-                        val src = sourceEl.attr("src")
-                        val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                        println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
-
-                        if (src.isNotBlank()) {
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = this.name,
-                                    name = label,
-                                    url = src,
-                                    type = ExtractorLinkType.VIDEO
+                            if (src.isNotBlank()) {
+                                callback.invoke(
+                                    newExtractorLink(
+                                        source = this.name,
+                                        name = label,
+                                        url = src,
+                                        type = ExtractorLinkType.VIDEO
+                                    )
                                 )
-                            )
+                            }
                         }
+
+                        println("ArabSeedProvider: ➡️ Passing iframe to other extractors: $iframeUrl")
+                        loadExtractor(iframeUrl, data, subtitleCallback, callback)
+                    } else {
+                        println("ArabSeedProvider: ❌ iframeUrl missing in JSON")
                     }
-
-                    println("ArabSeedProvider: ➡️ Passing iframe to extractors: $iframeUrl")
-                    loadExtractor(iframeUrl, data, subtitleCallback, callback)
                 } else {
-                    println("ArabSeedProvider: ❌ iframeUrl missing in JSON")
+                    println("ArabSeedProvider: ❌ Invalid JSON response: $body")
                 }
-            } else {
-                println("ArabSeedProvider: ❌ Invalid JSON response: $body")
+
+            } catch (e: Exception) {
+                println("ArabSeedProvider: 💥 Exception for post=$postId quality=$quality -> ${e.message}")
             }
-
-        } catch (e: Exception) {
-            println("ArabSeedProvider: 💥 Failed post=$postId quality=$quality -> ${e.message}")
         }
+
+        return true
     }
-
-    return true
-}
-
 }
