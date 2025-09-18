@@ -186,7 +186,7 @@ override suspend fun load(url: String): LoadResponse {
         }
         return true
     }*/
-  override suspend fun loadLinks(
+ override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -251,11 +251,16 @@ override suspend fun load(url: String): LoadResponse {
             }
 
         } catch (e: Exception) {
-            println("Failed post=$postId quality=$quality -> ${e.message}")
+            println("❌ Failed post=$postId quality=$quality -> ${e.message}")
+            try {
+                // attempt to log the raw body if available
+                println("🔍 Raw response body: ${app.lastResponse?.text ?: "N/A"}")
+            } catch (_: Exception) {
+                println("⚠️ Could not log raw body.")
+            }
         }
     }
 
     return true
 }
-
 }
