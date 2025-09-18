@@ -56,10 +56,7 @@ private fun Element.toSearchResponse(): SearchResponse? {
     val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
 
     // Grab poster and sanitize invalid characters like '@'
-   val posterUrl = poster.attr("src")
-    .let { fixUrl(it) }
-    ?.let { Uri.encode(it, "@") }
-
+    val posterUrl = poster.attr("src")
     val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
         Uri.encode(it, "@") // encodes everything except '@'
     }
