@@ -67,7 +67,7 @@ class ArabSeed : MainAPI() {
         val doc = app.get(url).document
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
-    private fun parseDuration(text: String): Int? {
+  /*  private fun parseDuration(text: String): Int? {
     // Arabic: "120 دقيقة"
     Regex("(\\d+)\\s*دقيقة").find(text)?.let { return it.groupValues[1].toIntOrNull() }
 
@@ -85,7 +85,7 @@ class ArabSeed : MainAPI() {
     Regex("(\\d+)m").find(text)?.let { return it.groupValues[1].toIntOrNull() }
 
     return null
-}
+}*/
 
 
     // --- Load details ---
@@ -100,8 +100,8 @@ override suspend fun load(url: String): LoadResponse {
 
     val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
     val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-    val durationText = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
-    val duration = durationText?.let { parseDuration(it) }
+  //  val durationText = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
+  //  val duration = durationText?.let { parseDuration(it) }
 
     // Episodes or movie
     val episodes = doc.select("ul.episodes__list li a").map {
@@ -120,7 +120,7 @@ override suspend fun load(url: String): LoadResponse {
             this.plot = plot
             this.tags = genres
             this.year = year
-            this.duration = duration
+          //  this.duration = duration
         }
     } else {
         newMovieLoadResponse(title, url, TvType.Movie, url) {
@@ -128,7 +128,7 @@ override suspend fun load(url: String): LoadResponse {
             this.plot = plot
             this.tags = genres
             this.year = year
-            this.duration = duration
+//            this.duration = duration
         }
     }
 }
