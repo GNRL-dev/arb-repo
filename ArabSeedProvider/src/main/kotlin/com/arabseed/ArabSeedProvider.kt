@@ -1,7 +1,6 @@
-epackage com.arabseed
+package com.arabseed
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 import android.net.Uri
@@ -12,26 +11,19 @@ class ArabSeed : MainAPI() {
     override var name = "ArabSeed"
     override val hasMainPage = true
     override val supportedTypes = setOf(TvType.TvSeries, TvType.Movie)
-    private val cfKiller = CloudflareKiller()
 
+    // --- Parse search items ---
+    private fun Element.toSearchResponse(): SearchResponse? {
+        val href = attr("href") ?: return null
+        val title = selectFirst("h3")?.text() ?: attr("title") ?: return null
+        val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
+            Uri.encode(it, "@")
+        }
 
-// --- Inside toSearchResponse() ---
-private fun Element.toSearchResponse(): SearchResponse? {
-    val href = this.attr("href") ?: return null
-    val title = selectFirst("h3")?.text() ?: this.attr("title") ?: return null
-
-    // Grab poster and sanitize invalid characters like '@'
-   val poster = selectFirst(".post__image img")?.attr("src")?.let { fixUrl(it) }?.let {
-        Uri.encode(it, "@") // encodes everything except '@'
+        return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
+            this.posterUrl = poster
+        }
     }
-    
-    return newMovieSearchResponse(title, fixUrl(href), TvType.Movie) {
-        this.posterUrl = poster
-        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-    }
-}
-
-
 
     // --- Home categories ---
     override val mainPage = mainPageOf(
@@ -48,186 +40,91 @@ private fun Element.toSearchResponse(): SearchResponse? {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (page == 1) request.data else "${request.data}page/$page/"
-
-        var doc = app.get(url).document
-        if (doc.select("title").text() == "Just a moment...") {
-            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
-        }
-
+        val doc = app.get(url).document
         val items = doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
-        return newHomePageResponse(request.name, items, hasNext = doc.select(".page-numbers a").isNotEmpty())
+        val hasNext = doc.select(".page-numbers a").isNotEmpty()
+        return newHomePageResponse(request.name, items, hasNext)
     }
 
-    // --- Fixed search using /find/ endpoint ---
+    // --- Search ---
     override suspend fun search(query: String): List<SearchResponse> {
         val url = "$mainUrl/find/?word=${query.replace(" ", "+")}&type="
-
-        var doc = app.get(url).document
-        if (doc.select("title").text() == "Just a moment...") {
-            doc = app.get(url, interceptor = cfKiller, timeout = 120).document
-        }
-
+        val doc = app.get(url).document
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
 
-    
-override suspend fun load(url: String): LoadResponse {
-    var doc = app.get(url).document
-    if (doc.select("title").text() == "Just a moment...") {
-        doc = app.get(url, interceptor = cfKiller, timeout = 120).document
-    }
+    // --- Load details ---
+    override suspend fun load(url: String): LoadResponse {
+        val doc = app.get(url).document
 
-    // --- Title & poster ---
-    val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
-        ?: doc.selectFirst("title")?.text().orEmpty()
-    val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+            ?: doc.selectFirst("title")?.text().orEmpty()
+        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val plot = doc.selectFirst("div.post__story p")?.text()
+            ?: doc.selectFirst("meta[name=description]")?.attr("content")
 
-    // Debugging
-    println("=== ArabSeed DEBUG (load) ===")
-    println("Title: $title")
-    println("URL: $url")
-    println("Poster meta: ${doc.selectFirst("meta[property=og:image]")?.attr("content")}")
-    println("Poster final: $poster")
+        val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
+        val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
+        val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
 
-    // --- Plot / description ---
-    val plot = doc.selectFirst("div.post__story p")?.text()
-        ?: doc.selectFirst("meta[name=description]")?.attr("content")
-
-    // --- Extra info ---
-    val year = doc.selectFirst(".info__area li:contains(سنة العرض)")?.select("a")?.text()?.toIntOrNull()
-    val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
-  //  val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
-    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()
-
-    // --- Episodes ---
-    val episodes = when {
-        // For series: grab all episodes
-        doc.select("ul.episodes__list li a").isNotEmpty() -> {
-            doc.select("ul.episodes__list li a").map {
-                newEpisode(it.attr("href")) {
-                    this.name = it.selectFirst(".epi__num")?.text()?.trim()
-                        ?: "Episode"
-                }
+        // Episodes or movie
+        val episodes = doc.select("ul.episodes__list li a").map {
+            newEpisode(it.attr("href")) {
+                this.name = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
+            }
+        }.ifEmpty {
+            doc.select("a.watch__btn").map {
+                newEpisode(it.attr("href")) { this.name = "مشاهدة الان" }
             }
         }
 
-        // For movies: single "watch" button
-        doc.selectFirst("a.watch__btn") != null -> {
-            listOf(
-                newEpisode(doc.selectFirst("a.watch__btn")!!.attr("href")) {
-                    this.name = "مشاهدة الان"
-                }
-            )
+        val commonBuilder: (LoadResponseBuilder.() -> Unit) = {
+            this.posterUrl = poster
+            this.plot = listOfNotNull(plot, "⏱️ المدة: $duration").joinToString("\n")
+            this.tags = genres
+            this.year = year
         }
 
-        else -> emptyList()
-    }
-
-    // --- Return response ---
-    return if (episodes.size > 1) {
-    newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-        this.posterUrl = poster
-        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-       // this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
-       this.plot = listOfNotNull(
-    plot,
-    "⏱️ المدة: $duration",
-).joinToString("\n")
-        this.tags = genres
-        this.year = year
-    }
-} else {
-    CompatMovieLoadResponse(title, url, TvType.Movie, url) {
-        this.posterUrl = poster
-        this.posterHeaders = cfKiller.getCookieHeaders(mainUrl).toMap()
-      //  this.plot = listOfNotNull(plot, "المدة: $duration").joinToString("\n")
-        this.plot = listOfNotNull(
-    plot,
-    "⏱️ المدة: $duration",
-).joinToString("\n")
-        this.tags = genres
-        this.year = year
-    }
-}
-
-}
-@Suppress("FunctionName")
-suspend fun MainAPI.CompatMovieLoadResponse(
-    name: String,
-    url: String,
-    type: TvType,
-    dataUrl: String? = null,
-    builder: MovieLoadResponse.() -> Unit
-): MovieLoadResponse {
-    return try {
-        // Try new SDK (with dataUrl)
-        if (dataUrl != null) {
-            newMovieLoadResponse(name, url, type, dataUrl, builder)
+        return if (episodes.size > 1) {
+            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes, commonBuilder)
         } else {
-            newMovieLoadResponse(name, url, type, builder)
+            newMovieLoadResponse(title, url, TvType.Movie, url, commonBuilder)
         }
-    } catch (e: NoSuchMethodError) {
-        // Fall back to old SDK
-        newMovieLoadResponse(name, url, type, builder)
     }
-}
 
-
-
+    // --- Extract links ---
     override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    var doc = app.get(data).document
-    if (doc.select("title").text() == "Just a moment...") {
-        doc = app.get(data, interceptor = cfKiller, timeout = 120).document
-    }
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ): Boolean {
+        val doc = app.get(data).document
+        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
+            ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
+            ?: return false
 
-    val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-        ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-        ?: return false
+        val watchDoc = app.get(watchUrl, referer = mainUrl).document
+        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
 
-    var watchDoc = app.get(watchUrl, referer = mainUrl).document
-    if (watchDoc.select("title").text() == "Just a moment...") {
-        watchDoc = app.get(watchUrl, referer = mainUrl, interceptor = cfKiller, timeout = 120).document
-    }
+        for (iframe in iframes) {
+            val iframeDoc = app.get(iframe, referer = watchUrl).document
 
-    val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
-
-    for (iframe in iframes) {
-        var iframeDoc = app.get(iframe, referer = watchUrl).document
-        if (iframeDoc.select("title").text() == "Just a moment...") {
-            iframeDoc = app.get(iframe, referer = watchUrl, interceptor = cfKiller, timeout = 120).document
-        }
-
-        iframeDoc.select("source").forEach { sourceEl ->
-            val src = sourceEl.attr("src")
-            val quality = when {
-                src.contains("1080") -> Qualities.P1080
-                src.contains("720") -> Qualities.P720
-                else -> Qualities.Unknown
+            iframeDoc.select("source").forEach { sourceEl ->
+                val src = sourceEl.attr("src")
+                callback.invoke(
+                    newExtractorLink(
+                        source = this.name,
+                        name = "Direct",
+                        url = src,
+                        type = ExtractorLinkType.VIDEO
+                    )
+                )
             }
 
-            callback.invoke(
-                newExtractorLink(
-                    source = this.name,
-                    name = "Direct",
-                    url = src,
-                    type = ExtractorLinkType.VIDEO
-                ) {
-                    referer = iframe
-                   // this.quality = quality
-                    headers = mapOf()
-                }
-            )
+            // hand off to extractors
+            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
         }
-
-        // hand off to built-in extractors too
-        loadExtractor(iframe, watchUrl, subtitleCallback, callback)
+        return true
     }
-    return true
-}
-
 }
