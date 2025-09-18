@@ -52,6 +52,26 @@ class ArabSeed : MainAPI() {
         val doc = app.get(url).document
         return doc.select("a.movie__block").mapNotNull { it.toSearchResponse() }
     }
+    private fun parseDuration(text: String): Int? {
+    // Arabic: "120 دقيقة"
+    Regex("(\\d+)\\s*دقيقة").find(text)?.let { return it.groupValues[1].toIntOrNull() }
+
+    // Arabic: "2 ساعة"
+    Regex("(\\d+)\\s*ساعة").find(text)?.let { return (it.groupValues[1].toIntOrNull() ?: 0) * 60 }
+
+    // English: "2h 15m"
+    Regex("(\\d+)h\\s*(\\d+)m").find(text)?.let {
+        val h = it.groupValues[1].toIntOrNull() ?: 0
+        val m = it.groupValues[2].toIntOrNull() ?: 0
+        return h * 60 + m
+    }
+
+    // English: "90m"
+    Regex("(\\d+)m").find(text)?.let { return it.groupValues[1].toIntOrNull() }
+
+    return null
+}
+
 
     // --- Load details ---
 override suspend fun load(url: String): LoadResponse {
