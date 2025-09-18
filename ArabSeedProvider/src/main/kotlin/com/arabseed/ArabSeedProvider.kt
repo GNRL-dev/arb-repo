@@ -100,7 +100,7 @@ override suspend fun load(url: String): LoadResponse {
     val year = doc.selectFirst(".info__area li:contains(سنة العرض)")?.select("a")?.text()?.toIntOrNull()
     val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
   //  val country = doc.selectFirst(".info__area li:contains(بلد العرض)")?.select("a")?.text()
-    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()?.toIntOrNull()
+    val duration = doc.selectFirst(".info__area li:contains(مدة العرض)")?.text()?.getIntFromText()
 
     // --- Episodes ---
     val episodes = when {
