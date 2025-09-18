@@ -107,7 +107,7 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Extract links with debug ---
-override suspend fun loadLinks(
+        override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -167,24 +167,44 @@ override suspend fun loadLinks(
 
                     val sources = iframeDoc.select("source")
                     if (sources.isEmpty()) {
-                        println("ArabSeedProvider: ❌ No <source> tags in iframe. HTML snippet=${iframeDoc.outerHtml().take(500)}")
-                    }
+                        println("ArabSeedProvider: ❌ No <source> tags in iframe. Trying regex fallback…")
 
-                    sources.forEach { sourceEl ->
-                        val src = sourceEl.attr("src")
-                        val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                        println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
+                        // --- Regex fallback (UQLOAD style) ---
+                        val regex = Regex("file\\s*[:=]\\s*\"(https[^\"]+)\"")
+                        val match = regex.find(iframeDoc.outerHtml())
+                        if (match != null) {
+                            val videoUrl = match.groupValues[1]
+                            println("ArabSeedProvider: 🎥 Regex extracted video=$videoUrl")
 
-                        if (src.isNotBlank()) {
                             foundAny = true
                             callback.invoke(
                                 newExtractorLink(
                                     source = this.name,
-                                    name = label,
-                                    url = src,
+                                    name = "${quality}p Regex",
+                                    url = videoUrl,
                                     type = ExtractorLinkType.VIDEO
                                 )
                             )
+                        } else {
+                            println("ArabSeedProvider: ❌ Regex fallback found nothing")
+                        }
+                    } else {
+                        sources.forEach { sourceEl ->
+                            val src = sourceEl.attr("src")
+                            val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
+                            println("ArabSeedProvider: 🎥 Found <source>: src=$src, label=$label")
+
+                            if (src.isNotBlank()) {
+                                foundAny = true
+                                callback.invoke(
+                                    newExtractorLink(
+                                        source = this.name,
+                                        name = label,
+                                        url = src,
+                                        type = ExtractorLinkType.VIDEO
+                                    )
+                                )
+                            }
                         }
                     }
 
@@ -210,5 +230,6 @@ override suspend fun loadLinks(
 
     return foundAny
 }
+
 
 }
