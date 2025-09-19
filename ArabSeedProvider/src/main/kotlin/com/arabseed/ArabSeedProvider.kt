@@ -138,58 +138,65 @@ override suspend fun loadLinks(
                 if (qualities.isNotEmpty() && !postId.isNullOrBlank() && !csrfToken.isNullOrBlank()) {
                     println("ArabSeedProvider: 🎚️ Found quality switcher with ${qualities.size} options")
 
-for (q in qualities) {
-    val quality = q.attr("data-quality")
-    if (quality.isBlank()) continue
+                    for (q in qualities) {
+                        val quality = q.attr("data-quality")
+                        if (quality.isBlank()) continue
 
-    try {
-        println("ArabSeedProvider: 🔍 Requesting quality=$quality")
+                        try {
+                            println("ArabSeedProvider: 🔍 Requesting quality=$quality")
 
-        val resp = app.post(
-            url = "$mainUrl/get__quality__servers/",
-            data = mapOf(
-                "post_id" to postId,
-                "quality" to quality,
-                "csrf_token" to csrfToken
-            ),
-            headers = mapOf(
-                "X-Requested-With" to "XMLHttpRequest",
-                "Accept" to "application/json, text/javascript, */*; q=0.01",
-                "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
-            ),
-            referer = iframe
-        )
+                            val resp = app.post(
+                                url = "$mainUrl/get__quality__servers/",
+                                data = mapOf(
+                                    "post_id" to postId,
+                                    "quality" to quality,
+                                    "csrf_token" to csrfToken
+                                ),
+                                headers = mapOf(
+                                    "X-Requested-With" to "XMLHttpRequest",
+                                    "Accept" to "application/json, text/javascript, */*; q=0.01",
+                                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
+                                ),
+                                referer = iframe
+                            )
 
-        val body = resp.text
-        if (body.isNotBlank() && body.trim().startsWith("{")) {
-            val json = JSONObject(body)
-            val embedUrl = json.optString("server", null)
+                            val body = resp.text
+                            if (body.isNotBlank() && body.trim().startsWith("{")) {
+                                val json = JSONObject(body)
+                                val embedUrl = json.optString("server", null)
 
-            println("ArabSeedProvider: 🖼️ iframeUrl=$embedUrl for quality=${quality}p")
+                                println("ArabSeedProvider: 🖼️ iframeUrl=$embedUrl for quality=${quality}p")
 
-            if (!embedUrl.isNullOrBlank()) {
-                val embedDoc = app.get(embedUrl, referer = iframe).document
-                val src = embedDoc.selectFirst("video > source")?.attr("src")
+                                if (!embedUrl.isNullOrBlank()) {
+                                    val embedDoc = app.get(embedUrl, referer = iframe).document
+                                    val src = embedDoc.selectFirst("video > source")?.attr("src")
 
-                if (!src.isNullOrBlank()) {
-                    println("ArabSeedProvider: ✅ Source=$src Quality=${quality}p")
-                    foundAny = true
-                    callback.invoke(
-                        newExtractorLink(
-                            source = this.name,
-                            name = "${quality}p Direct",
-                            url = src,
-                            type = ExtractorLinkType.VIDEO
-                        )
-                    )
+                                    if (!src.isNullOrBlank()) {
+                                        println("ArabSeedProvider: ✅ Source=$src Quality=${quality}p")
+                                        foundAny = true
+                                        callback.invoke(
+                                            newExtractorLink(
+                                                source = this.name,
+                                                name = "${quality}p Direct",
+                                                url = src,
+                                                type = ExtractorLinkType.VIDEO
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
+                        }
+                    }
                 }
             }
         }
     } catch (e: Exception) {
-        println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
+        println("ArabSeedProvider: ❌ Error in loadLinks → ${e.message}")
     }
-}
 
- return foundAny 
+    return foundAny
+}
 
 }
