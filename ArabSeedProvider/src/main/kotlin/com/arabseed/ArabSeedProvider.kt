@@ -20,9 +20,7 @@ class ArabSeed : MainAPI() {
 
       val posterUrl = selectFirst("img")?.attr("data-src")
     ?: selectFirst(".post__image img")?.attr("src")
-
-        // val posterUrl = selectFirst(".post__image img")?.attr("src")
-           // ?.replace("-304x450.webp", ".jpg")
+    
 
         println("ArabSeedProvider: Parsed search item -> title=$title, posterUrl=$posterUrl")
 
@@ -34,14 +32,14 @@ class ArabSeed : MainAPI() {
     // --- Home categories ---
     override val mainPage = mainPageOf(
         "$mainUrl/main0/" to "الرئيسية",
-        "$mainUrl/category/foreign-movies-6/" to "افلام اجنبي",
-        "$mainUrl/category/asian-movies/" to "افلام اسيوية",
+        "$mainUrl/category/foreign-movies-6/" to "أفلام اجنبي",
+        "$mainUrl/category/asian-movies/" to "افلام آسيوية",
         "$mainUrl/category/arabic-movies-5/" to "افلام عربي",
         "$mainUrl/category/foreign-series-2/" to "مسلسلات اجنبي",
         "$mainUrl/category/arabic-series-2/" to "مسلسلات عربي",
-        "$mainUrl/category/%d9%85%d8%b3%d9%84%d8%b3%d9%84-%d9%83%d9%88%d8%b1%d9%8a%d9%87/" to "مسلسلات كوريه",
-        "$mainUrl/category/%d8%a7%d9%81%d9%84%d8%a7%d9%85-%d8%a7%d9%86%d9%8a%d9%85%d9%8a%d8%b4%d9%86/" to "افلام انيميشن",
-        "$mainUrl/category/cartoon-series/" to "مسلسلات كرتون"
+        "$mainUrl/category/%d9%85%d8%b3%d9%84%d8%b3%d9%84-%d9%83%d9%88%d8%b1%d9%8a%d9%87/" to "مسلسلات كورية",
+        "$mainUrl/category/%d8%a7%d9%81%d9%84%d8%a7%d9%85-%d8%a7%d9%86%d9%8a%d9%85%d9%8a%d8%b4%d9%86/" to "أفلام انيميشن",
+        "$mainUrl/category/cartoon-series/" to " أنمي"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -72,7 +70,6 @@ class ArabSeed : MainAPI() {
         val year = doc.selectFirst(".info__area li:contains(سنة العرض) a")?.text()?.toIntOrNull()
         val genres = doc.select(".info__area li:contains(نوع العرض) a").map { it.text() }
 
-        println("ArabSeedProvider: Loading details -> title=$title, poster=$poster")
 
         val episodes = doc.select("ul.episodes__list li a").map {
             val rawName = it.selectFirst(".epi__num")?.text()?.trim() ?: "Episode"
@@ -107,7 +104,7 @@ class ArabSeed : MainAPI() {
     }
 
     // --- Extract links with debug ---
-      override suspend fun loadLinks(
+ /*     override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -238,7 +235,9 @@ class ArabSeed : MainAPI() {
     }
 
     return foundAny
-}
+}*/
+override suspend fun loadLinks( data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit ): Boolean val doc = app.get(data).document // Step 1: Try to find the main watch URL val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href") ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href") if (!watchUrl.isNullOrBlank()) { println("ArabSeedProvider: 🎬 Found watch URL=$watchUrl") val watchDoc = app.get(watchUrl, referer = mainUrl).document val iframes = watchDoc.select("iframe[src]").map { it.attr("src") } println("ArabSeedProvider: ➡️ Found ${iframes.size} iframe(s) from watch page") for (iframe in iframes) { println("ArabSeedProvider: 🌐 Loading iframe=$iframe") val iframeDoc = app.get(iframe, referer = watchUrl).document // --- CASE A: Multi-quality iframe --- val qualities = iframeDoc.select("ul.qualities__list li") val postId = iframeDoc.selectFirst("input[name=post_id]")?.attr("value") val csrfToken = iframeDoc.selectFirst("input[name=csrf_token]")?.attr("value") if (qualities.isNotEmpty() && !postId.isNullOrBlank() && !csrfToken.isNullOrBlank()) { println("ArabSeedProvider: 🎚️ Found quality switcher with ${qualities.size} options") for (q in qualities) { val quality = q.attr("data-quality") if (quality.isBlank()) continue try { val resp = app.post( url = "$mainUrl/get__quality__servers/", data = mapOf( "post_id" to postId, "quality" to quality, "csrf_token" to csrfToken ), referer = iframe ) val body = resp.text if (body.isNotBlank() && body.trim().startsWith("{")) { val json = JSONObject(body) val embedUrl = json.optString("server", null) println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$embedUrl for quality=$quality") if (!embedUrl.isNullOrBlank()) { val embedDoc = app.get(embedUrl, referer = iframe).document val src = embedDoc.selectFirst("video > source")?.attr("src") if (!src.isNullOrBlank()) { println("ArabSeedProvider: ✅ Multi-quality source=$src label=${quality}p Direct") foundAny = true callback.invoke( newExtractorLink( source = this.name, name = "${quality}p Direct", url = src, type = ExtractorLinkType.VIDEO ) ) } } } } catch (e: Exception) { println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}") } } } else { // --- CASE B: Simple iframe with <source> --- val sources = iframeDoc.select("video > source") if (sources.isEmpty()) { println("ArabSeedProvider: ❌ No <source> in iframe=$iframe") } sources.forEach { sourceEl -> val src = sourceEl.attr("src") val label = sourceEl.attr("label").ifBlank { "Direct" } if (src.isNotBlank()) { println("ArabSeedProvider: ✅ Direct link=$src label=$label") foundAny = true callback.invoke( newExtractorLink( source = this.name, name = label, url = src, type = ExtractorLinkType.VIDEO ) ) } } } } }
+
   
 
 }
