@@ -103,140 +103,6 @@ class ArabSeed : MainAPI() {
         }
     }
 
-    // --- Extract links with debug ---
- /*     override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    println("ArabSeedProvider: 🔎 loadLinks called with data=$data")
-
-    var foundAny = false
-
-    // --- Option A: One-Link fallback (always works) ---
-    val doc = app.get(data).document
-    val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-        ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-
-    if (!watchUrl.isNullOrBlank()) {
-        println("ArabSeedProvider: 🎬 Found watch URL=$watchUrl")
-
-        val watchDoc = app.get(watchUrl, referer = mainUrl).document
-        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
-        println("ArabSeedProvider: ➡️ Found ${iframes.size} iframe(s) from watch page")
-
-        for (iframe in iframes) {
-            println("ArabSeedProvider: 🌐 Loading iframe=$iframe")
-            val iframeDoc = app.get(iframe, referer = watchUrl).document
-
-            val sources = iframeDoc.select("source")
-            if (sources.isEmpty()) {
-                println("ArabSeedProvider: ❌ No <source> in iframe=$iframe")
-            }
-
-            sources.forEach { sourceEl ->
-                val src = sourceEl.attr("src")
-                if (src.isNotBlank()) {
-                    println("ArabSeedProvider: ✅ Direct link=$src")
-                    foundAny = true
-                    callback.invoke(
-                        newExtractorLink(
-                            source = this.name,
-                            name = "Direct",
-                            url = src,
-                            type = ExtractorLinkType.VIDEO
-                        )
-                    )
-                }
-            }
-
-            // Hand off iframe to extractors
-            loadExtractor(iframe, watchUrl, subtitleCallback, callback)
-        }
-    } else {
-        println("ArabSeedProvider: ❌ No watch button found")
-    }
-
-    // --- Option B: Multi-server / multi-quality (extra links) ---
-    val csrfToken = doc.selectFirst("meta[name=csrf-token]")?.attr("content")
-        ?: doc.selectFirst("input[name=csrf_token]")?.attr("value")
-        ?: ""
-
-    val servers = doc.select("div.servers__list li").mapNotNull { li ->
-        val postId = li.attr("data-post")
-        val quality = li.attr("data-qu")
-        if (postId.isNotBlank() && quality.isNotBlank()) {
-            Triple(postId, quality, csrfToken)
-        } else null
-    }
-
-    if (servers.isEmpty()) {
-        println("ArabSeedProvider: ❌ No servers found in servers__list")
-    }
-
-    for ((postId, quality, token) in servers) {
-        try {
-            println("ArabSeedProvider: 🌐 Requesting server=$postId quality=$quality")
-            val resp = app.post(
-                url = "$mainUrl/get__quality__servers/",
-                data = mapOf(
-                    "post_id" to postId,
-                    "quality" to quality,
-                    "csrf_token" to token
-                ),
-                referer = data
-            )
-
-            val body = resp.text
-            if (body.isNotBlank() && body.trim().startsWith("{")) {
-                val json = JSONObject(body)
-                val iframeUrl = json.optString("server", null)
-                println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$iframeUrl")
-
-                if (!iframeUrl.isNullOrBlank()) {
-                    val iframeDoc = app.get(iframeUrl, referer = data).document
-                    val sources = iframeDoc.select("source")
-
-                    if (sources.isEmpty()) {
-                        println("ArabSeedProvider: ❌ No <source> in iframe (multi-server)")
-                    }
-
-                    sources.forEach { sourceEl ->
-                        val src = sourceEl.attr("src")
-                        val label = sourceEl.attr("label").ifBlank { "${quality}p Direct" }
-                        if (src.isNotBlank()) {
-                            println("ArabSeedProvider: ✅ Multi-server source=$src label=$label")
-                            foundAny = true
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = this.name,
-                                    name = label,
-                                    url = src,
-                                    type = ExtractorLinkType.VIDEO
-                                )
-                            )
-                        }
-                    }
-
-                    // Always let external extractors try
-                    loadExtractor(iframeUrl, data, subtitleCallback, callback)
-                }
-            }
-        } catch (e: Exception) {
-            println("ArabSeedProvider: 💥 Failed post=$postId quality=$quality -> ${e.message}")
-        }
-    }
-
-    if (!foundAny) {
-        println("ArabSeedProvider: ❌ No direct links extracted (only external extractors may succeed)")
-    } else {
-        println("ArabSeedProvider: ✅ At least one direct link extracted")
-    }
-
-    return foundAny
-}*/
-
 override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
@@ -272,81 +138,58 @@ override suspend fun loadLinks(
                 if (qualities.isNotEmpty() && !postId.isNullOrBlank() && !csrfToken.isNullOrBlank()) {
                     println("ArabSeedProvider: 🎚️ Found quality switcher with ${qualities.size} options")
 
-                    for (q in qualities) {
-                        val quality = q.attr("data-quality")
-                        if (quality.isBlank()) continue
+for (q in qualities) {
+    val quality = q.attr("data-quality")
+    if (quality.isBlank()) continue
 
-                        try {
-                            val resp = app.post(
-                                url = "$mainUrl/get__quality__servers/",
-                                data = mapOf(
-                                    "post_id" to postId,
-                                    "quality" to quality,
-                                    "csrf_token" to csrfToken
-                                ),
-                                referer = iframe
-                            )
+    try {
+        println("ArabSeedProvider: 🔍 Requesting quality=$quality")
 
-                            val body = resp.text
-                            if (body.isNotBlank() && body.trim().startsWith("{")) {
-                                val json = JSONObject(body)
-                                val embedUrl = json.optString("server", null)
-                                println("ArabSeedProvider: 🖼️ Extracted iframeUrl=$embedUrl for quality=$quality")
+        val resp = app.post(
+            url = "$mainUrl/get__quality__servers/",
+            data = mapOf(
+                "post_id" to postId,
+                "quality" to quality,
+                "csrf_token" to csrfToken
+            ),
+            headers = mapOf(
+                "X-Requested-With" to "XMLHttpRequest",
+                "Accept" to "application/json, text/javascript, */*; q=0.01",
+                "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
+            ),
+            referer = iframe
+        )
 
-                                if (!embedUrl.isNullOrBlank()) {
-                                    val embedDoc = app.get(embedUrl, referer = iframe).document
-                                    val src = embedDoc.selectFirst("video > source")?.attr("src")
+        val body = resp.text
+        if (body.isNotBlank() && body.trim().startsWith("{")) {
+            val json = JSONObject(body)
+            val embedUrl = json.optString("server", null)
 
-                                    if (!src.isNullOrBlank()) {
-                                        println("ArabSeedProvider: ✅ Multi-quality source=$src label=${quality}p Direct")
-                                        foundAny = true
-                                        callback.invoke(
-                                            newExtractorLink(
-                                                source = this.name,
-                                                name = "${quality}p Direct",
-                                                url = src,
-                                                type = ExtractorLinkType.VIDEO
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
-                        }
-                    }
-                } else {
-                    // --- CASE B: Simple iframe with <source> ---
-                    val sources = iframeDoc.select("video > source")
-                    if (sources.isEmpty()) {
-                        println("ArabSeedProvider: ❌ No <source> in iframe=$iframe")
-                    }
+            println("ArabSeedProvider: 🖼️ iframeUrl=$embedUrl for quality=${quality}p")
 
-                    sources.forEach { sourceEl ->
-                        val src = sourceEl.attr("src")
-                        val label = sourceEl.attr("label").ifBlank { "Direct" }
-                        if (src.isNotBlank()) {
-                            println("ArabSeedProvider: ✅ Direct link=$src label=$label")
-                            foundAny = true
-                            callback.invoke(
-                                newExtractorLink(
-                                    source = this.name,
-                                    name = label,
-                                    url = src,
-                                    type = ExtractorLinkType.VIDEO
-                                )
-                            )
-                        }
-                    }
+            if (!embedUrl.isNullOrBlank()) {
+                val embedDoc = app.get(embedUrl, referer = iframe).document
+                val src = embedDoc.selectFirst("video > source")?.attr("src")
+
+                if (!src.isNullOrBlank()) {
+                    println("ArabSeedProvider: ✅ Source=$src Quality=${quality}p")
+                    foundAny = true
+                    callback.invoke(
+                        newExtractorLink(
+                            source = this.name,
+                            name = "${quality}p Direct",
+                            url = src,
+                            type = ExtractorLinkType.VIDEO
+                        )
+                    )
                 }
             }
         }
     } catch (e: Exception) {
-        println("ArabSeedProvider: ❌ General error → ${e.message}")
+        println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
     }
-
-    return foundAny
 }
+
   
 
 }
