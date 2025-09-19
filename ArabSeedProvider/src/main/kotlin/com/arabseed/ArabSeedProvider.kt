@@ -190,6 +190,6 @@ for (q in qualities) {
     }
 }
 
-  
+ return foundAny 
 
 }
