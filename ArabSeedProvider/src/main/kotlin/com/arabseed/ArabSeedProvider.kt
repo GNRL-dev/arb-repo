@@ -109,86 +109,90 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    var foundAny = false
+    println("ArabSeedProvider: 🚀 ENTERING loadLinks(data=$data)")
 
     try {
         val doc = app.get(data).document
 
-        // Step 1: Try to find the main watch URL
         val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
             ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
 
-        if (!watchUrl.isNullOrBlank()) {
-            println("ArabSeedProvider: 🎬 Found watch URL=$watchUrl")
+        if (watchUrl.isNullOrBlank()) {
+            println("ArabSeedProvider: ⚠️ No watch URL found")
+            return false
+        }
 
-            val watchDoc = app.get(watchUrl, referer = mainUrl).document
-            val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
+        println("ArabSeedProvider: 🎬 Found watch URL=$watchUrl")
 
-            println("ArabSeedProvider: ➡️ Found ${iframes.size} iframe(s) from watch page")
+        val watchDoc = app.get(watchUrl, referer = mainUrl).document
+        val iframes = watchDoc.select("iframe[src]").map { it.attr("src") }
 
-            for (iframe in iframes) {
-                println("ArabSeedProvider: 🌐 Loading iframe=$iframe")
-                val iframeDoc = app.get(iframe, referer = watchUrl).document
+        println("ArabSeedProvider: ➡️ Found ${iframes.size} iframe(s) from watch page")
 
-                // --- CASE A: Multi-quality iframe ---
-                val qualities = iframeDoc.select("ul.qualities__list li")
-                val postId = iframeDoc.selectFirst("input[name=post_id]")?.attr("value")
-                val csrfToken = iframeDoc.selectFirst("input[name=csrf_token]")?.attr("value")
+        for (iframe in iframes) {
+            println("ArabSeedProvider: 🌐 Checking iframe=$iframe")
+            val iframeDoc = app.get(iframe, referer = watchUrl).document
 
-                if (qualities.isNotEmpty() && !postId.isNullOrBlank() && !csrfToken.isNullOrBlank()) {
-                    println("ArabSeedProvider: 🎚️ Found quality switcher with ${qualities.size} options")
+            val qualities = iframeDoc.select("ul.qualities__list li")
+            val postId = iframeDoc.selectFirst("input[name=post_id]")?.attr("value")
+            val csrfToken = iframeDoc.selectFirst("input[name=csrf_token]")?.attr("value")
 
-                    for (q in qualities) {
-                        val quality = q.attr("data-quality")
-                        if (quality.isBlank()) continue
+            if (qualities.isEmpty() || postId.isNullOrBlank() || csrfToken.isNullOrBlank()) {
+                println("ArabSeedProvider: ⚠️ No quality list or tokens found in iframe=$iframe")
+                continue
+            }
 
-                        try {
-                            println("ArabSeedProvider: 🔍 Requesting quality=$quality")
+            println("ArabSeedProvider: 🎚️ Found quality switcher with ${qualities.size} option(s)")
 
-                            val resp = app.post(
-                                url = "$mainUrl/get__quality__servers/",
-                                data = mapOf(
-                                    "post_id" to postId,
-                                    "quality" to quality,
-                                    "csrf_token" to csrfToken
-                                ),
-                                headers = mapOf(
-                                    "X-Requested-With" to "XMLHttpRequest",
-                                    "Accept" to "application/json, text/javascript, */*; q=0.01",
-                                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
-                                ),
-                                referer = iframe
-                            )
+            for (q in qualities) {
+                val quality = q.attr("data-quality")
+                if (quality.isBlank()) continue
 
-                            val body = resp.text
-                            if (body.isNotBlank() && body.trim().startsWith("{")) {
-                                val json = JSONObject(body)
-                                val embedUrl = json.optString("server", null)
+                try {
+                    println("ArabSeedProvider: 🔍 Requesting quality=$quality")
 
-                                println("ArabSeedProvider: 🖼️ iframeUrl=$embedUrl for quality=${quality}p")
+                    val resp = app.post(
+                        url = "$mainUrl/get__quality__servers/",
+                        data = mapOf(
+                            "post_id" to postId,
+                            "quality" to quality,
+                            "csrf_token" to csrfToken
+                        ),
+                        headers = mapOf(
+                            "X-Requested-With" to "XMLHttpRequest",
+                            "Accept" to "application/json, text/javascript, */*; q=0.01",
+                            "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
+                        ),
+                        referer = iframe
+                    )
 
-                                if (!embedUrl.isNullOrBlank()) {
-                                    val embedDoc = app.get(embedUrl, referer = iframe).document
-                                    val src = embedDoc.selectFirst("video > source")?.attr("src")
+                    val body = resp.text
+                    if (body.isNotBlank() && body.trim().startsWith("{")) {
+                        val json = JSONObject(body)
+                        val embedUrl = json.optString("server", null)
 
-                                    if (!src.isNullOrBlank()) {
-                                        println("ArabSeedProvider: ✅ Source=$src Quality=${quality}p")
-                                        foundAny = true
-                                        callback.invoke(
-                                            newExtractorLink(
-                                                source = this.name,
-                                                name = "${quality}p Direct",
-                                                url = src,
-                                                type = ExtractorLinkType.VIDEO
-                                            )
-                                        )
-                                    }
-                                }
+                        println("ArabSeedProvider: 🖼️ iframeUrl=$embedUrl for quality=${quality}p")
+
+                        if (!embedUrl.isNullOrBlank()) {
+                            val embedDoc = app.get(embedUrl, referer = iframe).document
+                            val src = embedDoc.selectFirst("video > source")?.attr("src")
+
+                            if (!src.isNullOrBlank()) {
+                                println("ArabSeedProvider: ✅ FINAL LINK FOUND -> $src Quality=${quality}p")
+                                callback.invoke(
+                                    newExtractorLink(
+                                        source = this.name,
+                                        name = "${quality}p Direct",
+                                        url = src,
+                                        type = ExtractorLinkType.VIDEO
+                                    )
+                                )
+                                return true
                             }
-                        } catch (e: Exception) {
-                            println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
                         }
                     }
+                } catch (e: Exception) {
+                    println("ArabSeedProvider: ❌ Error loading quality=$quality → ${e.message}")
                 }
             }
         }
@@ -196,7 +200,9 @@ override suspend fun loadLinks(
         println("ArabSeedProvider: ❌ Error in loadLinks → ${e.message}")
     }
 
-    return foundAny
+    println("ArabSeedProvider: 🚫 No valid links extracted")
+    return false
 }
+
 
 }
