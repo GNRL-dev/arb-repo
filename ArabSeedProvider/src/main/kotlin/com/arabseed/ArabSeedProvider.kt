@@ -111,6 +111,7 @@ override suspend fun loadLinks(
 ): Boolean {
     println("ArabSeedProvider: 🚀 ENTERING loadLinks(data=$data)")
 
+    var foundAny = false
     try {
         val doc = app.get(data).document
 
