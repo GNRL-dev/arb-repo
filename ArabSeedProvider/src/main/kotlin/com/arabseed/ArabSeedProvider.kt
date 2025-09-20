@@ -116,8 +116,8 @@ override suspend fun loadLinks(
         val doc = app.get(data).document
 
        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-    ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
-
+           ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
+ 
 if (watchUrl.isNullOrBlank()) {
     println("ArabSeedProvider: ⚠️ No watch URL found on page: $data")
     return foundAny
