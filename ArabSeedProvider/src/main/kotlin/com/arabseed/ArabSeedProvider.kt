@@ -131,7 +131,7 @@ override suspend fun loadLinks(
 //}
 if (watchUrl.isNullOrBlank()) {
     println("ArabSeedProvider: ⚠️ No watch URL found. First 300 chars of page:\n" +
-        doc.outerHtml.take(300))
+        doc.outerHtml().take(300))
     return foundAny
 }
 
