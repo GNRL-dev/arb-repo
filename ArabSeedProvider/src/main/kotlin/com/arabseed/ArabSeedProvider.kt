@@ -173,13 +173,13 @@ override suspend fun loadLinks(
 
             // 7. Return the link to Cloudstream
             callback.invoke(
-                ExtractorLink(
+                newExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed $q",
                     url = videoUrl,
                     referer = iframeUrl,
                     quality = q.toIntOrNull() ?: 0,
-                    isM3u8 = videoUrl.endsWith(".m3u8")
+                   // isM3u8 = videoUrl.endsWith(".m3u8")
                 )
             )
         } catch (e: Exception) {
