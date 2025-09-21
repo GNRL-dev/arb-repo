@@ -104,7 +104,7 @@ class ArabSeed : MainAPI() {
         }
     }
 
-override suspend fun loadLinks(
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -217,7 +217,52 @@ println("🎬 Found watch URL = $watchUrl")
 
     println("ArabSeedProvider: 🚫 No valid links extracted")
     return false
+}*/
+
+    override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    val doc = debugGetDocument(data, "SIMPLE")
+
+    val watchUrl = doc.selectFirst("a.watch__btn")?.attr("abs:href")
+        ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("abs:href")
+        ?: return false
+
+    println("🎬 [SIMPLE] Found watchUrl = $watchUrl")
+
+    val watchDoc = debugGetDocument(watchUrl, "SIMPLE-WATCH")
+    val iframes = watchDoc.select("iframe[src]").map { it.attr("abs:src") }
+
+    println("➡️ [SIMPLE] Found ${iframes.size} iframe(s)")
+
+    for (iframe in iframes) {
+        println("🌐 [SIMPLE] Checking iframe = $iframe")
+        val iframeDoc = debugGetDocument(iframe, "SIMPLE-IFRAME")
+
+        iframeDoc.select("source").forEach { sourceEl ->
+            val src = sourceEl.attr("src")
+            if (!src.isNullOrBlank()) {
+                println("✅ [SIMPLE] Found video source = $src")
+                callback.invoke(
+                    newExtractorLink(
+                        source = this.name,
+                        name = "Direct",
+                        url = src,
+                        type = ExtractorLinkType.VIDEO
+                    )
+                )
+            }
+        }
+
+        // hand off to other extractors
+        loadExtractor(iframe, watchUrl, subtitleCallback, callback)
+    }
+    return true
 }
+
 
 
 }
