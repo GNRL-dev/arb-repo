@@ -104,153 +104,76 @@ class ArabSeed : MainAPI() {
         }
     }
 
-/*override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    val baseHeaders = mapOf(
-        "User-Agent" to USER_AGENT,
-        "Referer" to mainUrl,
-        "Accept-Language" to "ar,en;q=0.9"
-    )
-
-    println("=== [ArabSeed] loadLinks START ===")
-    println("Movie page URL: $data")
-
-    // 1. Load the main watch page
-    val doc = app.get(data, headers = baseHeaders).document
-    println("Fetched movie page. Title: ${doc.title()}")
-
-    // 2. Get the post ID
-    val postId = doc.selectFirst("ul.qualities__list li")?.attr("data-post")
-    println("Extracted postId = $postId")
-    if (postId == null) {
-        println("!!! ERROR: Could not find data-post on page")
-        return false
-    }
-
-    // 3. Define qualities
-    val qualities = listOf("480", "720", "1080")
-
-    for (q in qualities) {
-        try {
-            println("=== Trying quality: $q ===")
-
-            // 4. Call the AJAX endpoint
-            val ajaxUrl = "$mainUrl/wp-admin/admin-ajax.php"
-            val body = mapOf(
-                "action" to "getquality",
-                "post" to postId,
-                "server" to "0",
-                "quality" to q
-            )
-
-            println("POST $ajaxUrl with body $body")
-
-            val json = app.post(
-                ajaxUrl,
-                data = body,
-                headers = baseHeaders
-            ).parsed<Map<String, Any?>>()
-
-            println("AJAX Response: $json")
-
-            val iframeUrl = json["server"] as? String
-            println("Extracted iframeUrl = $iframeUrl")
-            if (iframeUrl == null) {
-                println("!!! ERROR: No iframeUrl found for quality $q")
-                continue
-            }
-
-            // 5. Open iframe
-            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
-            println("Fetched iframe. Title: ${iframeDoc.title()}")
-
-            // 6. Extract video source
-            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-            println("Extracted videoUrl = $videoUrl")
-            if (videoUrl == null) {
-                println("!!! ERROR: No <video> source found in iframe for quality $q")
-                continue
-            }
-
-            // 7. Callback
-            println(">>> SUCCESS: Found video for $q → $videoUrl")
-            callback.invoke(
-                newExtractorLink(
-                    source = "ArabSeed",
-                    name = "ArabSeed $q",
-                    url = videoUrl,
-                    ){
-                    referer = iframeUrl
-                    quality = q.toIntOrNull() ?: 0
-                 //   isM3u8 = videoUrl.endsWith(".m3u8")
-                }
-            )
-        } catch (e: Exception) {
-            println("!!! ERROR: Exception while fetching quality $q → ${e.message}")
-        }
-    }
-
-    println("=== [ArabSeed] loadLinks END ===")
-    return true
-}*/
 override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    val headers = mapOf(
-        "User-Agent" to USER_AGENT,
-        "Referer" to mainUrl,
-        "Accept-Language" to "ar,en;q=0.9"
-    )
-
     println("=== [ArabSeed] loadLinks START ===")
     println("Movie page: $data")
 
     // 1. Open movie page
-    val doc = app.get(data, headers = headers).document
-    println("Fetched movie page. Title: ${doc.title()}")
-
-    // 2. Find the watch button iframe link
-    val iframeUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-    println("Found iframeUrl = $iframeUrl")
-    if (iframeUrl.isNullOrBlank()) {
-        println("!!! ERROR: No watch__btn found on page")
+    val doc = app.get(data).document
+    val postId = doc.selectFirst("ul.qualities__list li[data-post]")?.attr("data-post")
+    println("Extracted postId = $postId")
+    if (postId.isNullOrBlank()) {
+        println("!!! ERROR: Could not find postId on page")
         return false
     }
 
-    // 3. Open the iframe page
-    val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
-    println("Fetched iframe. Title: ${iframeDoc.title()}")
+    // 2. Prepare AJAX URL
+    val ajaxUrl = "$mainUrl/wp-admin/admin-ajax.php"
+    val qualities = listOf("480", "720", "1080")
 
-    // 4. Extract direct video
-    val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-        ?: iframeDoc.selectFirst("video")?.attr("src")
-    println("Extracted videoUrl = $videoUrl")
-    if (videoUrl.isNullOrBlank()) {
-        println("!!! ERROR: No <video> source found inside iframe")
-        return false
-    }
+    // 3. Loop through qualities
+    for (q in qualities) {
+        try {
+            println("=== Trying quality $q ===")
 
-    // 5. Return the link
-    callback.invoke(
-        newExtractorLink(
-            source = "ArabSeed",
-            name = "ArabSeed",
-            url = videoUrl,
-            ){
-            referer = iframeUrl
-            quality = getQualityFromName(videoUrl)
-           // isM3u8 = videoUrl.endsWith(".m3u8")
+            // Call AJAX endpoint
+            val body = mapOf(
+                "action" to "getquality",
+                "post" to postId,
+                "server" to "0",
+                "quality" to q
+            )
+            val json = app.post(ajaxUrl, data = body, referer = data).parsed<Map<String, Any?>>()
+            val iframeUrl = json["server"] as? String
+            println("AJAX returned iframeUrl = $iframeUrl")
+
+            if (iframeUrl.isNullOrBlank()) {
+                println("!!! ERROR: No iframe for $q")
+                continue
+            }
+
+            // Fetch iframe
+            val iframeDoc = app.get(iframeUrl, referer = data).document
+            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
+                ?: iframeDoc.selectFirst("video")?.attr("src")
+            println("Extracted videoUrl = $videoUrl")
+
+            if (videoUrl.isNullOrBlank()) {
+                println("!!! ERROR: No video found in iframe for $q")
+                continue
+            }
+
+            // Return link
+            callback.invoke(
+                newExtractorLink(
+                    source = this.name,
+                    name = "ArabSeed $q",
+                    url = videoUrl,
+                    type = ExtractorLinkType.VIDEO,
+                    quality = q.toInt()
+                )
+            )
+            println(">>> SUCCESS: $q → $videoUrl")
+        } catch (e: Exception) {
+            println("!!! ERROR: Failed $q → ${e.message}")
         }
-    )
+    }
 
-    println(">>> SUCCESS: video playable at $videoUrl")
     println("=== [ArabSeed] loadLinks END ===")
     return true
 }
