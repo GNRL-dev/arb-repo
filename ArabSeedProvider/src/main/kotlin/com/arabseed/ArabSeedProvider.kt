@@ -2,6 +2,7 @@ package com.arabseed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
+//import com.lagradost.cloudstream3.utils.Qualities
 import org.jsoup.nodes.Element
 import android.net.Uri
 import org.json.JSONObject
@@ -115,28 +116,19 @@ override suspend fun loadLinks(
     try {
         val doc = app.get(data).document
 
-      val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-          ?: doc.selectFirst("a.btn-watch")?.attr("href")   // new class?
-          ?: doc.selectFirst("a[href*=\"/play/\"]")?.attr("href")
-          ?: doc.selectFirst("a[href*=\"/video/\"]")?.attr("href")
+val watchUrl = doc.selectFirst("a.watch__btn")?.attr("abs:href")
+    ?: doc.selectFirst("a.btn-watch")?.attr("abs:href")
+    ?: doc.selectFirst("a[href*=\"/play/\"]")?.attr("abs:href")
+    ?: doc.selectFirst("a[href*=\"/video/\"]")?.attr("abs:href")
 
-        
-        
-      //  val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
-        //   ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
- 
-//if (watchUrl.isNullOrBlank()) {
- //   println("ArabSeedProvider: ⚠️ No watch URL found on page: $data")
-//    return foundAny
-//}
 if (watchUrl.isNullOrBlank()) {
-    println("ArabSeedProvider: ⚠️ No watch URL found. First 300 chars of page:\n" +
-        doc.outerHtml().take(300))
-    return foundAny
+    println("⚠️ No watch URL found! Debugging anchors:")
+    doc.select("a").forEach { println(it.outerHtml()) }
+    return false
 }
 
+println("🎬 Found watch URL = $watchUrl")
 
-        
      //   val watchUrl = doc.selectFirst("a.watch__btn")?.attr("href")
         //    ?: doc.selectFirst("a[href*=\"/watch/\"]")?.attr("href")
 
