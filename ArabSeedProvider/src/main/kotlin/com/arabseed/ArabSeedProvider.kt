@@ -115,64 +115,72 @@ override suspend fun loadLinks(
 
     val headers = mapOf("User-Agent" to USER_AGENT, "Referer" to mainUrl)
 
-    // 1. Open movie page
+    // 1. Fetch movie page
     val doc = app.get(data, headers = headers).document
     println("Fetched movie page. Title: ${doc.title()}")
 
-    // 2. Find qualities list (480/720/1080)
-    val qualities = doc.select("ul.qualities__list li[data-quality]")
-    if (qualities.isEmpty()) {
-        println("!!! ERROR: No qualities list found")
+    // 2. Extract post_id
+    val postId = doc.selectFirst("ul.qualities__list li[data-post]")?.attr("data-post")
+    println("Extracted postId = $postId")
+
+    // 3. Extract csrf_token from JS
+    val csrf = Regex("csrf__token\\s*:\\s*\"(\\w+)\"")
+        .find(doc.html())?.groupValues?.get(1)
+    println("Extracted csrf_token = $csrf")
+
+    if (postId.isNullOrBlank() || csrf.isNullOrBlank()) {
+        println("!!! ERROR: Missing postId or csrf_token")
         return false
     }
 
+    // 4. Loop qualities
+    val qualities = listOf("480", "720", "1080")
+    val ajaxUrl = "$mainUrl/get__quality__servers/"
+
     for (q in qualities) {
-        val quality = q.attr("data-quality")
-        println("=== Trying quality $quality ===")
+        try {
+            println("=== Trying quality $q ===")
 
-        // Click simulation: each li has data-post/server/quality → call Ajax
-        val postId = q.attr("data-post")
-        val server = q.attr("data-server")
-        val ajaxUrl = "$mainUrl/wp-admin/admin-ajax.php"
+            val body = mapOf(
+                "post_id" to postId,
+                "quality" to q,
+                "csrf_token" to csrf
+            )
+            println("POST $ajaxUrl with $body")
 
-        val body = mapOf(
-            "action" to "getquality",
-            "post" to postId,
-            "server" to server,
-            "quality" to quality
-        )
-        println("POST $ajaxUrl with $body")
+            val json = app.post(ajaxUrl, data = body, headers = headers).parsed<Map<String, Any?>>()
+            val iframeUrl = json["server"] as? String
+            println("AJAX returned iframeUrl = $iframeUrl")
 
-        val json = app.post(ajaxUrl, data = body, headers = headers).parsed<Map<String, Any?>>()
-        val iframeUrl = json["server"] as? String
-        println("AJAX returned iframeUrl = $iframeUrl")
+            if (iframeUrl.isNullOrBlank()) continue
 
-        if (iframeUrl.isNullOrBlank()) continue
+            // 5. Fetch iframe
+            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
+                ?: iframeDoc.selectFirst("video")?.attr("src")
+            println("Extracted videoUrl = $videoUrl")
 
-        // 3. Open iframe page
-        val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
-        val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-            ?: iframeDoc.selectFirst("video")?.attr("src")
-        println("Extracted videoUrl = $videoUrl")
-
-        if (videoUrl.isNullOrBlank()) {
-            println("!!! ERROR: No video found for $quality")
-            continue
-        }
-
-        // 4. Return link
-        callback.invoke(
-            newExtractorLink(
-                source = "ArabSeed",
-                name = "ArabSeed ${quality}p",
-                url = videoUrl,
-                ){
-                referer = iframeUrl
-               // quality = quality.toInt
-               // isM3u8 = videoUrl.endsWith(".m3u8")
+            if (videoUrl.isNullOrBlank()) {
+                println("!!! ERROR: No video found for $q")
+                continue
             }
-        )
-        println(">>> SUCCESS: $quality → $videoUrl")
+
+            // 6. Return link
+            callback.invoke(
+                newExtractorLink(
+                    source = "ArabSeed",
+                    name = "ArabSeed ${q}p",
+                    url = videoUrl,
+                    ){
+                    referer = iframeUrl
+                  //  quality = q.toInt(),
+                  //  isM3u8 = videoUrl.endsWith(".m3u8")
+                }
+            )
+            println(">>> SUCCESS: $q → $videoUrl")
+        } catch (e: Exception) {
+            println("!!! ERROR: Failed $q → ${e.message}")
+        }
     }
 
     println("=== [ArabSeed] loadLinks END ===")
