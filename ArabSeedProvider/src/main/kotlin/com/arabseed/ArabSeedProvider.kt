@@ -130,102 +130,64 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    println("🚀 [COMPLEX] ENTERING loadLinks(data=$data)")
+    val baseHeaders = mapOf(
+        "User-Agent" to USER_AGENT,
+        "Referer" to mainUrl,
+        "Accept-Language" to "ar,en;q=0.9"
+    )
 
-    var foundAny = false
-    try {
-        val doc = debugGetDocument(data, "COMPLEX")
+    // 1. Load the main watch page
+    val doc = app.get(data, headers = baseHeaders).document
 
-        val watchUrl = doc.selectFirst("a.watch__btn")?.attr("abs:href")
-            ?: doc.selectFirst("a.btn-watch")?.attr("abs:href")
-            ?: doc.selectFirst("a[href*=\"/play/\"]")?.attr("abs:href")
-            ?: doc.selectFirst("a[href*=\"/video/\"]")?.attr("abs:href")
+    // 2. Get the post ID (needed for getquality call)
+    val postId = doc.selectFirst("ul.qualities__list li")?.attr("data-post")
+        ?: return false
 
-        if (watchUrl.isNullOrBlank()) {
-            println("⚠️ [COMPLEX] No watch URL found in page=$data")
-            return foundAny
+    // 3. Loop over the qualities you want
+    val qualities = listOf("480", "720", "1080")
+    for (q in qualities) {
+        try {
+            // 4. Call the AJAX endpoint used by the site
+            val ajaxUrl = "$mainUrl/wp-admin/admin-ajax.php"
+            val body = mapOf(
+                "action" to "getquality",
+                "post" to postId,
+                "server" to "0",   // first server (you can loop over more if you want)
+                "quality" to q
+            )
+
+            val json = app.post(
+                ajaxUrl,
+                data = body,
+                headers = baseHeaders
+            ).parsed<Map<String, Any?>>()
+
+            val iframeUrl = json["server"] as? String ?: continue
+
+            // 5. Open the iframe page
+            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+
+            // 6. Extract the real video URL from <video><source>
+            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
+                ?: continue
+
+            // 7. Return the link to Cloudstream
+            callback.invoke(
+                ExtractorLink(
+                    source = "ArabSeed",
+                    name = "ArabSeed $q",
+                    url = videoUrl,
+                    referer = iframeUrl,
+                    quality = q.toIntOrNull() ?: 0,
+                    isM3u8 = videoUrl.endsWith(".m3u8")
+                )
+            )
+        } catch (e: Exception) {
+            println("Error fetching quality $q → ${e.message}")
         }
-
-        println("🎬 [COMPLEX] Found watchUrl = $watchUrl")
-
-        val watchDoc = debugGetDocument(watchUrl, "COMPLEX-WATCH")
-        val iframes = watchDoc.select("iframe[src]").map { it.attr("abs:src") }
-
-        println("➡️ [COMPLEX] Found ${iframes.size} iframe(s) from watch page")
-
-        for (iframe in iframes) {
-            println("🌐 [COMPLEX] Checking iframe = $iframe")
-            val iframeDoc = debugGetDocument(iframe, "COMPLEX-IFRAME")
-
-            val qualities = iframeDoc.select("ul.qualities__list li")
-            val postId = iframeDoc.selectFirst("input[name=post_id]")?.attr("value")
-            val csrfToken = iframeDoc.selectFirst("input[name=csrf_token]")?.attr("value")
-
-            if (qualities.isEmpty() || postId.isNullOrBlank() || csrfToken.isNullOrBlank()) {
-                println("⚠️ [COMPLEX] Missing qualities/tokens in iframe=$iframe")
-                continue
-            }
-
-            println("🎚️ [COMPLEX] Found quality switcher with ${qualities.size} options")
-
-            for (q in qualities) {
-                val quality = q.attr("data-quality")
-                if (quality.isBlank()) continue
-
-                try {
-                    println("🔍 [COMPLEX] Requesting quality=$quality")
-
-                    val resp = app.post(
-                        url = "$mainUrl/get__quality__servers/",
-                        data = mapOf(
-                            "post_id" to postId,
-                            "quality" to quality,
-                            "csrf_token" to csrfToken
-                        ),
-                        headers = mapOf(
-                            "X-Requested-With" to "XMLHttpRequest",
-                            "Accept" to "application/json, text/javascript, */*; q=0.01",
-                            "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
-                        ),
-                        referer = iframe
-                    )
-
-                    val body = resp.text
-                    if (body.isNotBlank() && body.trim().startsWith("{")) {
-                        val json = JSONObject(body)
-                        val embedUrl = json.optString("server", null)
-
-                        println("🖼️ [COMPLEX] Got embedUrl=$embedUrl for quality=${quality}p")
-
-                        if (!embedUrl.isNullOrBlank()) {
-                            val embedDoc = debugGetDocument(embedUrl, "COMPLEX-EMBED")
-                            val src = embedDoc.selectFirst("video > source")?.attr("src")
-
-                            if (!src.isNullOrBlank()) {
-                                println("✅ [COMPLEX] FINAL LINK FOUND: $src (quality=${quality}p)")
-                                callback.invoke(
-                                    newExtractorLink(
-                                        source = this.name,
-                                        name = "${quality}p Direct",
-                                        url = src,
-                                        type = ExtractorLinkType.VIDEO
-                                    )
-                                )
-                                return true
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("❌ [COMPLEX] Error loading quality=$quality → ${e.message}")
-                }
-            }
-        }
-    } catch (e: Exception) {
-        println("❌ [COMPLEX] Error in loadLinks → ${e.message}")
     }
 
-    println("🚫 [COMPLEX] No valid links extracted")
-    return false
+    return true
 }
 
 
