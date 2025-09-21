@@ -171,8 +171,8 @@ override suspend fun loadLinks(
                     url = videoUrl
                 ) {
                     referer = iframeUrl
-                    quality = quality.toIntOrNull() ?: 0
-                    isM3u8 = videoUrl.endsWith(".m3u8")
+                 //   quality = quality.toIntOrNull() ?: 0
+                 //   isM3u8 = videoUrl.endsWith(".m3u8")
                 }
             )
             println(">>> SUCCESS: $quality → $videoUrl")
