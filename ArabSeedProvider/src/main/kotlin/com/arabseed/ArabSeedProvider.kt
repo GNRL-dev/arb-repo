@@ -104,26 +104,6 @@ class ArabSeed : MainAPI() {
         }
     }
 
-suspend fun debugGetDocument(url: String, tag: String): org.jsoup.nodes.Document {
-    val doc = app.get(url).document
-
-    println("=== DEBUG [$tag] HTML START ===")
-    println(doc.outerHtml().take(2000))
-    println("=== DEBUG [$tag] HTML END ===")
-
-    println("=== DEBUG [$tag] ALL <a> TAGS ===")
-    doc.select("a").forEach { a: org.jsoup.nodes.Element ->
-        val rawHref = a.attr("href")
-        val absHref = a.attr("abs:href")
-        println("Anchor: ${a.outerHtml()}")
-        println("   raw href = $rawHref")
-        println("   abs href = $absHref")
-    }
-    println("=== DEBUG [$tag] END ALL <a> TAGS ===")
-
-    return doc
-}
-
 override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
@@ -136,25 +116,38 @@ override suspend fun loadLinks(
         "Accept-Language" to "ar,en;q=0.9"
     )
 
+    println("=== [ArabSeed] loadLinks START ===")
+    println("Movie page URL: $data")
+
     // 1. Load the main watch page
     val doc = app.get(data, headers = baseHeaders).document
+    println("Fetched movie page. Title: ${doc.title()}")
 
-    // 2. Get the post ID (needed for getquality call)
+    // 2. Get the post ID
     val postId = doc.selectFirst("ul.qualities__list li")?.attr("data-post")
-        ?: return false
+    println("Extracted postId = $postId")
+    if (postId == null) {
+        println("!!! ERROR: Could not find data-post on page")
+        return false
+    }
 
-    // 3. Loop over the qualities you want
+    // 3. Define qualities
     val qualities = listOf("480", "720", "1080")
+
     for (q in qualities) {
         try {
-            // 4. Call the AJAX endpoint used by the site
+            println("=== Trying quality: $q ===")
+
+            // 4. Call the AJAX endpoint
             val ajaxUrl = "$mainUrl/wp-admin/admin-ajax.php"
             val body = mapOf(
                 "action" to "getquality",
                 "post" to postId,
-                "server" to "0",   // first server (you can loop over more if you want)
+                "server" to "0",
                 "quality" to q
             )
+
+            println("POST $ajaxUrl with body $body")
 
             val json = app.post(
                 ajaxUrl,
@@ -162,34 +155,47 @@ override suspend fun loadLinks(
                 headers = baseHeaders
             ).parsed<Map<String, Any?>>()
 
-            val iframeUrl = json["server"] as? String ?: continue
+            println("AJAX Response: $json")
 
-            // 5. Open the iframe page
+            val iframeUrl = json["server"] as? String
+            println("Extracted iframeUrl = $iframeUrl")
+            if (iframeUrl == null) {
+                println("!!! ERROR: No iframeUrl found for quality $q")
+                continue
+            }
+
+            // 5. Open iframe
             val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+            println("Fetched iframe. Title: ${iframeDoc.title()}")
 
-            // 6. Extract the real video URL from <video><source>
+            // 6. Extract video source
             val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-                ?: continue
+            println("Extracted videoUrl = $videoUrl")
+            if (videoUrl == null) {
+                println("!!! ERROR: No <video> source found in iframe for quality $q")
+                continue
+            }
 
-            // 7. Return the link to Cloudstream
+            // 7. Callback
+            println(">>> SUCCESS: Found video for $q → $videoUrl")
             callback.invoke(
-                newExtractorLink(
+                ExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed $q",
                     url = videoUrl,
                     ){
                     referer = iframeUrl
                     quality = q.toIntOrNull() ?: 0
-                   // isM3u8 = videoUrl.endsWith(".m3u8")
+                 //   isM3u8 = videoUrl.endsWith(".m3u8")
                 }
             )
         } catch (e: Exception) {
-            println("Error fetching quality $q → ${e.message}")
+            println("!!! ERROR: Exception while fetching quality $q → ${e.message}")
         }
     }
 
+    println("=== [ArabSeed] loadLinks END ===")
     return true
 }
-
 
 }
