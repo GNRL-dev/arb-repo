@@ -119,6 +119,9 @@ override suspend fun loadLinks(
     println("Fetched movie page. Title: ${doc.title()}")
 
     val html = doc.html()
+    println("=== HTML DUMP START ===")
+println(html.take(2000)) // first 2000 chars only (to avoid massive spam)
+println("=== HTML DUMP END ===")
 
     // 2. Extract csrf__token from inline JS (main__obj)
     val csrf = Regex("csrf__token['\"]?\\s*:\\s*\"(\\w+)\"")
