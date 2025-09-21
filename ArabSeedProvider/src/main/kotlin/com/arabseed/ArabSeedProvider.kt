@@ -179,7 +179,7 @@ override suspend fun loadLinks(
             // 7. Callback
             println(">>> SUCCESS: Found video for $q → $videoUrl")
             callback.invoke(
-                ExtractorLink(
+                newExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed $q",
                     url = videoUrl,
