@@ -103,27 +103,34 @@ class ArabSeed : MainAPI() {
             }
         }
     }
-suspend fun loadLink(url: String): Map<String, String> {
-    val links = mutableMapOf<String, String>()
-    val doc = app.get(url).document
+override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    println("▶️ loadLinks started for $data")
 
-    // 1) Extract postId
+    val doc = app.get(data).document
+
+    // 1) Extract postId + csrf
     val postId = doc.select("li[data-post]").attr("data-post")
-    println("Step 1: postId = $postId")
-    if (postId.isNullOrBlank()) {
-        println("❌ Failed: no postId found.")
-        return links
+    val csrf = doc.select("meta[name=csrf-token]").attr("content")
+    println("Step 1: postId=$postId | csrf=$csrf")
+
+    if (postId.isBlank() || csrf.isBlank()) {
+        println("❌ Missing postId or csrf_token")
+        return false
     }
 
-    val csrf = doc.select("meta[name=csrf-token]").attr("content")
-    println("Step 2: csrf_token = $csrf")
-
     val qualities = listOf("480", "720", "1080")
+    var foundAny = false
+
     for (quality in qualities) {
         try {
             println("------ Trying quality $quality ------")
 
-            // 2) Call get__quality__servers
+            // 2) Ajax call
             val ajaxResp = app.post(
                 "https://a.asd.homes/get__quality__servers/",
                 data = mapOf(
@@ -132,45 +139,44 @@ suspend fun loadLink(url: String): Map<String, String> {
                     "csrf_token" to csrf
                 )
             ).text
-            println("Step 3: Ajax response length = ${ajaxResp.length}")
+            println("Step 2: Ajax resp length=${ajaxResp.length}")
 
+            // 3) Extract iframe url
             val serverUrl = Regex(""""server"\s*:\s*"([^"]+)"""")
                 .find(ajaxResp)?.groupValues?.get(1)
-            println("Step 4: iframe/server = $serverUrl")
-            if (serverUrl.isNullOrBlank()) {
-                println("❌ Failed: no server URL for $quality")
-                continue
-            }
+            println("Step 3: iframe=$serverUrl")
 
-            // 3) Open iframe page
+            if (serverUrl.isNullOrBlank()) continue
+
+            // 4) Open iframe
             val iframeDoc = app.get(serverUrl).document
-            println("Step 5: iframe title = ${iframeDoc.title()}")
+            val videoUrl = iframeDoc.select("video source").attr("src")
+            println("Step 4: video=$videoUrl")
 
-            // 4) Extract video src
-            val videoSrc = iframeDoc.select("video source").attr("src")
-            println("Step 6: extracted video = $videoSrc")
-
-            if (videoSrc.isNotBlank()) {
-                links[quality] = videoSrc
-                println("✅ Success $quality → $videoSrc")
+            if (videoUrl.isNotBlank()) {
+                callback.invoke(
+                    newExtractorLink(
+                        this.name,
+                        "${this.name} - ${quality}p",
+                        videoUrl,
+                        ){
+                        referer = serverUrl
+                      //  quality = quality.toInt(),
+                       // isM3u8 = videoUrl.contains(".m3u8")
+                    }
+                )
+                println("✅ Added $quality → $videoUrl")
+                foundAny = true
             } else {
-                // fallback regex
-                val regexSrc = Regex("""https?://[^\s'"]+\.mp4""")
-                    .find(iframeDoc.html())?.value
-                if (regexSrc != null) {
-                    links[quality] = regexSrc
-                    println("✅ Success (regex) $quality → $regexSrc")
-                } else {
-                    println("❌ Failed: no video for $quality")
-                }
+                println("❌ No video tag for $quality")
             }
         } catch (e: Exception) {
-            println("⚠️ Error at quality $quality: ${e.message}")
+            println("⚠️ Error $quality → ${e.message}")
         }
     }
 
-    println("Finished. Found links = $links")
-    return links
+    println("▶️ loadLinks finished. foundAny=$foundAny")
+    return foundAny
 }
 
 }
