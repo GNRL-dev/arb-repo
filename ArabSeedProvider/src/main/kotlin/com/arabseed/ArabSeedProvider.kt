@@ -109,74 +109,88 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    println("▶️ loadLinks started for $data")
+    println("=== [ArabSeed] loadLinks START ===")
+    println("Movie page: $data")
 
-    val doc = app.get(data).document
+    val headers = mapOf("User-Agent" to USER_AGENT, "Referer" to mainUrl)
 
-    // 1) Extract postId + csrf
-    val postId = doc.select("li[data-post]").attr("data-post")
-    val csrf = doc.select("meta[name=csrf-token]").attr("content")
-    println("Step 1: postId=$postId | csrf=$csrf")
+    // 1. Open movie page
+    val doc = app.get(data, headers = headers).document
+    println("Fetched movie page. Title: ${doc.title()}")
 
-    if (postId.isBlank() || csrf.isBlank()) {
-        println("❌ Missing postId or csrf_token")
+    val html = doc.html()
+
+    // 2. Extract csrf__token from inline JS (main__obj)
+    val csrf = Regex("csrf__token['\"]?\\s*:\\s*\"(\\w+)\"")
+        .find(html)?.groupValues?.get(1)
+    println("Extracted csrf_token = $csrf")
+
+    // 3. Find qualities list (480/720/1080)
+    val qualities = doc.select("ul[class*=qualities] li[data-quality]")
+
+    // Fallback: extract psot_id if data-post not found
+    val fallbackPostId = Regex("'psot_id':\\s*'?(\\d+)'?")
+        .find(html)?.groupValues?.get(1)
+
+    if ((qualities.isEmpty() && fallbackPostId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+        println("!!! ERROR: No qualities list or csrf_token not found")
         return false
     }
 
-    val qualities = listOf("480", "720", "1080")
-    var foundAny = false
+    val ajaxUrl = "$mainUrl/get__quality__servers/"
 
-    for (quality in qualities) {
+    for (q in qualities.ifEmpty { listOf() }) {
+        val quality = q.attr("data-quality").ifBlank { "0" }
+        val postId = q.attr("data-post").ifBlank { fallbackPostId ?: "" }
+
+        println("=== Trying quality $quality ===")
+
+        val body = mapOf(
+            "post_id" to postId,
+            "quality" to quality,
+            "csrf_token" to csrf
+        )
+        println("POST $ajaxUrl with $body")
+
         try {
-            println("------ Trying quality $quality ------")
+            val json = app.post(ajaxUrl, data = body, headers = headers).parsed<Map<String, Any?>>()
+            val iframeUrl = json["server"] as? String
+            println("AJAX returned iframeUrl = $iframeUrl")
 
-            // 2) Ajax call
-            val ajaxResp = app.post(
-                "https://a.asd.homes/get__quality__servers/",
-                data = mapOf(
-                    "post_id" to postId,
-                    "quality" to quality,
-                    "csrf_token" to csrf
-                )
-            ).text
-            println("Step 2: Ajax resp length=${ajaxResp.length}")
+            if (iframeUrl.isNullOrBlank()) continue
 
-            // 3) Extract iframe url
-            val serverUrl = Regex(""""server"\s*:\s*"([^"]+)"""")
-                .find(ajaxResp)?.groupValues?.get(1)
-            println("Step 3: iframe=$serverUrl")
+            // 4. Open iframe page
+            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
+                ?: iframeDoc.selectFirst("video")?.attr("src")
+            println("Extracted videoUrl = $videoUrl")
 
-            if (serverUrl.isNullOrBlank()) continue
-
-            // 4) Open iframe
-            val iframeDoc = app.get(serverUrl).document
-            val videoUrl = iframeDoc.select("video source").attr("src")
-            println("Step 4: video=$videoUrl")
-
-            if (videoUrl.isNotBlank()) {
-                callback.invoke(
-                    newExtractorLink(
-                        this.name,
-                        "${this.name} - ${quality}p",
-                        videoUrl,
-                        ){
-                        referer = serverUrl
-                      //  quality = quality.toInt(),
-                       // isM3u8 = videoUrl.contains(".m3u8")
-                    }
-                )
-                println("✅ Added $quality → $videoUrl")
-                foundAny = true
-            } else {
-                println("❌ No video tag for $quality")
+            if (videoUrl.isNullOrBlank()) {
+                println("!!! ERROR: No video found for $quality")
+                continue
             }
+
+            // 5. Return link
+            callback.invoke(
+                newExtractorLink(
+                    source = "ArabSeed",
+                    name = "ArabSeed ${quality}p",
+                    url = videoUrl
+                ) {
+                    referer = iframeUrl
+                    this.quality = quality.toIntOrNull() ?: 0
+                    //isM3u8 = videoUrl.endsWith(".m3u8")
+                }
+            )
+            println(">>> SUCCESS: $quality → $videoUrl")
         } catch (e: Exception) {
-            println("⚠️ Error $quality → ${e.message}")
+            println("!!! ERROR: Failed quality $quality → ${e.message}")
         }
     }
 
-    println("▶️ loadLinks finished. foundAny=$foundAny")
-    return foundAny
+    println("=== [ArabSeed] loadLinks END ===")
+    return true
 }
+
 
 }
