@@ -430,14 +430,15 @@ override suspend fun loadLinks(
             if (!videoUrl.isNullOrBlank()) {
                 log(">>> SUCCESS: quality=$quality (primary iframe) -> $videoUrl")
                 callback.invoke(
-                    ExtractorLink(
+                    newExtractorLink(
                         source = "ArabSeed",
                         name = "ArabSeed $quality",
                         url = videoUrl,
-                        referer = primaryIframeUrl,
-                        quality = quality.toIntOrNull() ?: 0,
-                        isM3u8 = videoUrl.endsWith(".m3u8")
-                    )
+                        ){
+                        referer = primaryIframeUrl
+                        quality = quality.toIntOrNull() ?: 0
+                     //   isM3u8 = videoUrl.endsWith(".m3u8")
+                    }
                 )
                 // If you want the first success only, return true here.
                 // Otherwise comment out the next line to collect all qualities.
