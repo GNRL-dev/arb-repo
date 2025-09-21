@@ -177,10 +177,11 @@ override suspend fun loadLinks(
                     source = "ArabSeed",
                     name = "ArabSeed $q",
                     url = videoUrl,
-                    referer = iframeUrl,
-                    quality = q.toIntOrNull() ?: 0,
+                    ){
+                    referer = iframeUrl
+                    quality = q.toIntOrNull() ?: 0
                    // isM3u8 = videoUrl.endsWith(".m3u8")
-                )
+                }
             )
         } catch (e: Exception) {
             println("Error fetching quality $q → ${e.message}")
