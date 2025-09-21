@@ -165,8 +165,9 @@ override suspend fun loadLinks(
                     name = "ArabSeed $q",
                     url = videoUrl,
                     type = ExtractorLinkType.VIDEO,
+                    ){
                     quality = q.toInt()
-                )
+                }
             )
             println(">>> SUCCESS: $q → $videoUrl")
         } catch (e: Exception) {
