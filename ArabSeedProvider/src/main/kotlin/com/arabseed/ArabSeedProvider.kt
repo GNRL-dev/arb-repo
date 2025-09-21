@@ -118,19 +118,26 @@ override suspend fun loadLinks(
     val doc = app.get(data, headers = headers).document
     println("Fetched movie page. Title: ${doc.title()}")
 
-    val html = doc.html()
+  /* val html = doc.html()
     println("=== HTML DUMP START ===")
-println(html.take(2000)) // first 2000 chars only (to avoid massive spam)
-println("=== HTML DUMP END ===")
+    println(html.take(2000)) // first 2000 chars only (to avoid massive spam)
+     println("=== HTML DUMP END ===")*/
+    val html = doc.html()
+    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
+
+     
 
     // 2. Extract csrf__token from inline JS (main__obj)
-    val csrf = Regex("csrf__token['\"]?\\s*:\\s*\"(\\w+)\"")
-        .find(html)?.groupValues?.get(1)
+    val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
+    .find(html)?.groupValues?.get(1)
+
     println("Extracted csrf_token = $csrf")
 
     // 3. Find qualities list (480/720/1080)
-    val qualities = doc.select("ul[class*=qualities] li[data-quality]")
+  //  val qualities = doc.select("ul[class*=qualities] li[data-quality]")
+    val qualities = doc.select("ul li[data-quality]")
 
+  
     // Fallback: extract psot_id if data-post not found
     val fallbackPostId = Regex("'psot_id':\\s*'?(\\d+)'?")
         .find(html)?.groupValues?.get(1)
@@ -144,8 +151,14 @@ println("=== HTML DUMP END ===")
 
     for (q in qualities.ifEmpty { listOf() }) {
         val quality = q.attr("data-quality").ifBlank { "0" }
-        val postId = q.attr("data-post").ifBlank { fallbackPostId ?: "" }
+        //val postId = q.attr("data-post").ifBlank { fallbackPostId ?: "" }
+        val postId = q.attr("data-post").ifBlank {
+            Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+                .find(html)?.groupValues?.get(1) ?: ""
+}
 
+              
+        
         println("=== Trying quality $quality ===")
 
         val body = mapOf(
