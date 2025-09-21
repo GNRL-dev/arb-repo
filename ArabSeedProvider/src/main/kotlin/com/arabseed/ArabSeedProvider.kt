@@ -162,7 +162,7 @@ override suspend fun loadLinks(
 
         // 4. Return link
         callback.invoke(
-            ExtractorLink(
+            newExtractorLink(
                 source = "ArabSeed",
                 name = "ArabSeed ${quality}p",
                 url = videoUrl,
