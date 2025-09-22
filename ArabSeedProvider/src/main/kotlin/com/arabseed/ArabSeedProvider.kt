@@ -103,7 +103,7 @@ class ArabSeed : MainAPI() {
             }
         }
     }
-override suspend fun loadLinks(
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -169,7 +169,7 @@ val ajaxUrl = "$mainUrl/get__quality__servers/"
 
 }*/
     
-        println("=== Trying quality $quality ===")
+       // println("=== Trying quality $quality ===")
 
         val body = mapOf(
     "post_id" to (postId ?: ""),
@@ -222,6 +222,111 @@ val ajaxUrl = "$mainUrl/get__quality__servers/"
 
     println("=== [ArabSeed] loadLinks END ===")
     return true
+}*/
+override suspend fun loadLinks(
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    println("=== [ArabSeed] loadLinks START ===")
+    println("Movie page: $data")
+
+    val headers = mapOf(
+        "User-Agent" to USER_AGENT,
+        "Referer" to data,  // movie page as referer
+        "X-Requested-With" to "XMLHttpRequest"
+    )
+
+    // 1. Fetch movie page
+    val doc = app.get(data, headers = headers).document
+    println("Fetched movie page. Title: ${doc.title()}")
+
+    val html = doc.html()
+    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
+
+    // 2. Extract csrf token
+    val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
+        .find(html)?.groupValues?.get(1)
+    println("DEBUG: extracted csrf_token = $csrf")
+
+    // 3. Extract postId from page JSON
+    val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
+        .find(html)?.groupValues?.get(1)
+    println("DEBUG: extracted postId = $postId")
+
+    // 4. Extract qualities
+    val qualities = doc.select("ul li[data-quality]")
+    println("DEBUG: qualities found = ${qualities.size}")
+
+    if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+        println("!!! ERROR: No qualities list or csrf_token found")
+        return false
+    }
+
+    // 5. Loop over qualities (or fallback once if empty)
+    val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
+
+    for (q in qualitiesToTry) {
+        val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
+        val postIdFinal = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
+
+        println("DEBUG: trying quality = $quality, postId = $postIdFinal")
+        println("DEBUG: quality = $quality")
+        println("DEBUG: postId = $postId")
+        println("DEBUG: csrf = $csrf")
+
+
+        val ajaxUrl = "$mainUrl/get__quality__servers/"
+        val body = mapOf(
+            "post_id" to postIdFinal,
+            "quality" to quality,
+            "csrf_token" to (csrf ?: "")
+        )
+        println("DEBUG: POST $ajaxUrl with $body")
+
+        try {
+            val json = app.post(ajaxUrl, data = body, headers = headers).parsed<Map<String, Any?>>()
+            val iframeUrl = json["server"] as? String
+            println("DEBUG: iframeUrl = $iframeUrl")
+
+            if (iframeUrl.isNullOrBlank()) {
+                println("!!! ERROR: No iframe URL returned for quality $quality")
+                continue
+            }
+
+            // 6. Fetch iframe page
+            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
+                ?: iframeDoc.selectFirst("video")?.attr("src")
+            println("DEBUG: extracted videoUrl = $videoUrl")
+
+            if (videoUrl.isNullOrBlank()) {
+                println("!!! ERROR: No video found for $quality")
+                continue
+            }
+
+            // 7. Return link
+            callback.invoke(
+                newExtractorLink(
+                    source = "ArabSeed",
+                    name = "ArabSeed ${quality}p",
+                    url = videoUrl
+                ) {
+                    referer = iframeUrl
+                    this.quality = quality.toIntOrNull() ?: 0
+                }
+            )
+            println(">>> SUCCESS: $quality → $videoUrl")
+
+        } catch (e: Exception) {
+            println("!!! ERROR: Failed quality $quality → ${e.message}")
+        }
+    }
+
+    println("=== [ArabSeed] loadLinks END ===")
+    return true
 }
+
 
 }
