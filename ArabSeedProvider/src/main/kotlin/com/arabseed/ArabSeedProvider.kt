@@ -180,10 +180,10 @@ override suspend fun loadLinks(
             val iframeUrl = json["server"] as? String
           //  println("DEBUG: iframeUrl = $iframeUrl")
 
-            if (iframeUrl.isNullOrBlank()) {
-                println("!!! ERROR: No iframe URL returned for quality $quality")
-                continue
-            }
+          //  if (iframeUrl.isNullOrBlank()) {
+             //   println("!!! ERROR: No iframe URL returned for quality $quality")
+             //   continue
+         //   }
 
             // 6. Fetch iframe page
             val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
@@ -195,13 +195,13 @@ override suspend fun loadLinks(
              //   println("!!! ERROR: No video found for $quality")
               //  continue
             //}
-
+        val safeVideoUrl = videoUrl ?: continue
             // 7. Return link
             callback.invoke(
                 newExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed ${quality}p",
-                    url = videoUrl
+                    url = safeVideoUrl
                 ) {
                     referer = iframeUrl
                     this.quality = quality.toIntOrNull() ?: 0
