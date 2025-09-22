@@ -216,78 +216,79 @@ override suspend fun loadLinks(
     println("=== [ArabSeed] loadLinks START ===")
     println("Movie page: $data")
 
-    val headers = mapOf("User-Agent" to USER_AGENT, "Referer" to mainUrl)
+    val headers = mutableMapOf(
+        "User-Agent" to USER_AGENT,
+        "Referer" to mainUrl
+    )
 
     // 1. Open movie page
     val doc = app.get(data, headers = headers).document
     val html = doc.html()
     println("Fetched movie page. Title: ${doc.title()}")
 
-    // Debug snippet of HTML
-    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
-
-    // 2. Extract csrf__token
-    val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
-        .find(html)?.groupValues?.get(1)
+    // 2. Extract csrf_token (hidden input, meta, or inline script)
+    val csrf = doc.selectFirst("input[name=csrf_token]")?.attr("value")
+        ?: Regex("csrf_token\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
+            .find(html)?.groupValues?.get(1)
 
     println("Extracted csrf_token = $csrf")
 
-    // 3. Extract post_id from inline script
-    val postId = Regex("\"post_id\"\\s*[:=]\\s*\"?(\\d+)\"?")
-        .find(html)?.groupValues?.get(1) ?: ""
-    println("Extracted postId = $postId")
-
-    // 4. Extract qualities (e.g. 480, 720, 1080)
-    val qualities = Regex("\"quality\"\\s*[:=]\\s*\"?(\\d+)\"?")
-        .findAll(html)
-        .map { it.groupValues[1] }
-        .distinct()
-        .toList()
-    println("Extracted qualities = $qualities")
-
-    if (postId.isBlank() || qualities.isEmpty() || csrf.isNullOrBlank()) {
-        println("!!! ERROR: Missing postId/qualities/csrf_token")
+    // 3. Extract list of servers (li[data-post][data-qu])
+    val servers = doc.select("li[data-post][data-qu]")
+    if (servers.isEmpty() || csrf.isNullOrBlank()) {
+        println("!!! ERROR: Missing servers or csrf_token")
         return false
     }
 
     val ajaxUrl = "$mainUrl/get__quality__servers/"
 
-    // 5. Loop over qualities
-    for (quality in qualities) {
-        println("=== Trying quality $quality ===")
+    // 4. Loop over available qualities/servers
+    for (li in servers) {
+        val postId = li.attr("data-post")
+        val quality = li.attr("data-qu")
+        val serverId = li.attr("data-server")
+
+        println("=== Trying quality $quality, server $serverId ===")
 
         val body = mapOf(
             "post_id" to postId,
             "quality" to quality,
             "csrf_token" to csrf
         )
-        println("POST $ajaxUrl with $body")
 
         try {
-            val json = app.post(ajaxUrl, data = body, headers = headers)
-                .parsed<Map<String, Any?>>()
+            val json = app.post(
+                ajaxUrl,
+                data = body,
+                headers = headers + mapOf(
+                    "Referer" to data,
+                    "X-Requested-With" to "XMLHttpRequest",
+                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
+                )
+            ).parsed<Map<String, Any?>>()
 
             val iframeUrl = json["server"] as? String
             println("AJAX returned iframeUrl = $iframeUrl")
 
             if (iframeUrl.isNullOrBlank()) continue
 
-            // 6. Open iframe page
+            // 5. Open iframe page
             val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
             val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
                 ?: iframeDoc.selectFirst("video")?.attr("src")
+
             println("Extracted videoUrl = $videoUrl")
 
             if (videoUrl.isNullOrBlank()) {
-                println("!!! ERROR: No video found for $quality")
+                println("!!! ERROR: No video found for quality $quality (server $serverId)")
                 continue
             }
 
-            // 7. Return link
+            // 6. Return link
             callback.invoke(
                 newExtractorLink(
                     source = "ArabSeed",
-                    name = "ArabSeed ${quality}p",
+                    name = "ArabSeed ${quality}p (S$serverId)",
                     url = videoUrl
                 ) {
                     referer = iframeUrl
@@ -295,14 +296,14 @@ override suspend fun loadLinks(
                 }
             )
             println(">>> SUCCESS: $quality → $videoUrl")
+
         } catch (e: Exception) {
-            println("!!! ERROR: Failed quality $quality → ${e.message}")
+            println("!!! ERROR: Failed quality $quality (server $serverId) → ${e.message}")
         }
     }
 
     println("=== [ArabSeed] loadLinks END ===")
     return true
 }
-
 
 }
