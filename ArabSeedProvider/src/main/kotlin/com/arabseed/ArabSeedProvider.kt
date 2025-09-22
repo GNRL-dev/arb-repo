@@ -137,7 +137,7 @@ override suspend fun loadLinks(
      val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
           .find(html)?.groupValues?.get(1)
 
-    if ((qualities.isEmpty() && fallbackPostId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+    if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
         println("!!! ERROR: No qualities list or csrf_token not found")
         return false
     }
