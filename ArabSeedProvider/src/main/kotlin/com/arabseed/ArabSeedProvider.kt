@@ -251,18 +251,27 @@ override suspend fun loadLinks(
     println("DEBUG: extracted csrf_token = $csrf")
 
     // 3. Extract postId from page JSON
-    val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
-        .find(html)?.groupValues?.get(1)
+  // val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
+         // .find(html)?.groupValues?.get(1)
+
+ val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+    .find(html)?.groupValues?.get(1)
+    
     println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
     val qualities = doc.select("ul li[data-quality]")
     println("DEBUG: qualities found = ${qualities.size}")
 
-    if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-        println("!!! ERROR: No qualities list or csrf_token found")
-        return false
-    }
+  //  if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+    //    println("!!! ERROR: No qualities list or csrf_token found")
+    //    return false
+  //  }
+  if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+    println("!!! ERROR: No qualities list or csrf_token found")
+    return false
+}
+
 
     // 5. Loop over qualities (or fallback once if empty)
     val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
