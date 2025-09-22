@@ -103,7 +103,7 @@ class ArabSeed : MainAPI() {
             }
         }
     }
-/*override suspend fun loadLinks(
+override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -152,9 +152,13 @@ class ArabSeed : MainAPI() {
     for (q in qualities.ifEmpty { listOf() }) {
         val quality = q.attr("data-quality").ifBlank { "0" }
         //val postId = q.attr("data-post").ifBlank { fallbackPostId ?: "" }
-        val postId = q.attr("data-post").ifBlank {
-            Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
-                .find(html)?.groupValues?.get(1) ?: ""
+       // val postId = q.attr("data-post").ifBlank {
+         //   Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+            //    .find(html)?.groupValues?.get(1) ?: ""
+
+            val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
+                  .find(html)?.groupValues?.get(1)
+
 }
 
               
@@ -207,7 +211,7 @@ class ArabSeed : MainAPI() {
     println("=== [ArabSeed] loadLinks END ===")
     return true
 }
-override suspend fun loadLinks(
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -304,8 +308,8 @@ override suspend fun loadLinks(
 
     println("=== [ArabSeed] loadLinks END ===")
     return true
-}*/
-override suspend fun loadLinks(
+}
+/*override suspend fun loadLinks(
     data: String,
     isCasting: Boolean,
     subtitleCallback: (SubtitleFile) -> Unit,
@@ -422,7 +426,7 @@ override suspend fun loadLinks(
 
     println("=== [ArabSeed] loadLinks END ===")
     return true
-}
+}*/
 
 
 }
