@@ -141,31 +141,31 @@ override suspend fun loadLinks(
     println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
-    val qualities = doc.select("ul li[data-quality]")
-    println("DEBUG: qualities found = ${qualities.size}")
+  //  val qualities = doc.select("ul li[data-quality]")
+ //   println("DEBUG: qualities found = ${qualities.size}")
 
 
-  if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-    println("!!! ERROR: No qualities list or csrf_token found")
-    return false
-}
+ // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+//    println("!!! ERROR: No qualities list or csrf_token found")
+ //   return false
+//}
 
 
     // 5. Loop over qualities (or fallback once if empty)
-    val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
+ //   val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
 
-    for (q in qualitiesToTry) {
-        val quality = q?.attr("data-quality")?.ifBlank { "480" } ?: "480"
+ //   for (q in qualitiesToTry) {
+    //    val quality = q?.attr("data-quality")?.ifBlank { "480" } ?: "480"
       //  val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
       //  val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
-        val postIdFinal = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
+      //  val postIdFinal = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
         println("DEBUG: trying quality = $quality, postId = $postIdFinal")
         println("DEBUG: quality = $quality")
         println("DEBUG: postId = $postId")
         println("DEBUG: csrf = $csrf")
 
-
+        val quality = "720"
         val ajaxUrl = "$mainUrl/get__quality__servers/"
         val body = mapOf(
             "post_id" to postIdFinal,
