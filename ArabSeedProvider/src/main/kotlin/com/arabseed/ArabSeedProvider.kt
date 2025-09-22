@@ -170,10 +170,16 @@ for (q in qualitiesToTry) {
         println("=== Trying quality $quality ===")
 
         val body = mapOf(
+    "post_id" to (postId ?: ""),
+    "quality" to quality,
+    "csrf_token" to (csrf ?: "")
+)
+
+       /* val body = mapOf(
             "post_id" to postId,
             "quality" to quality,
             "csrf_token" to csrf
-        )
+        )*/
         println("POST $ajaxUrl with $body")
 
         try {
