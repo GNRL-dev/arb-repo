@@ -137,10 +137,23 @@ override suspend fun loadLinks(
      val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
           .find(html)?.groupValues?.get(1)
 
-    if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-        println("!!! ERROR: No qualities list or csrf_token not found")
-        return false
-    }
+   // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+     //   println("!!! ERROR: No qualities list or csrf_token not found")
+      //  return false
+      val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
+
+for (q in qualitiesToTry) {
+    val quality = q?.attr("data-quality")?.ifBlank { "0" } ?: "0"
+    val postId = q?.attr("data-post")?.ifBlank {
+        Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+            .find(html)?.groupValues?.get(1) ?: ""
+    } ?: Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+            .find(html)?.groupValues?.get(1) ?: ""
+
+    // Now you can safely make your AJAX request even if qualities list is empty
+}
+
+    
 
     val ajaxUrl = "$mainUrl/get__quality__servers/"
 
