@@ -191,10 +191,10 @@ override suspend fun loadLinks(
                 ?: iframeDoc.selectFirst("video")?.attr("src")
           //  println("DEBUG: extracted videoUrl = $videoUrl")
 
-            if (videoUrl.isNullOrBlank()) {
-                println("!!! ERROR: No video found for $quality")
-                continue
-            }
+          //  if (videoUrl.isNullOrBlank()) {
+             //   println("!!! ERROR: No video found for $quality")
+              //  continue
+            //}
 
             // 7. Return link
             callback.invoke(
@@ -212,7 +212,7 @@ override suspend fun loadLinks(
         } catch (e: Exception) {
           //  println("!!! ERROR: Failed quality $quality → ${e.message}")
         }
-    }
+    
 
   //  println("=== [ArabSeed] loadLinks END ===")
     return true
