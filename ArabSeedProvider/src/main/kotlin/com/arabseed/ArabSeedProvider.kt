@@ -118,15 +118,9 @@ override suspend fun loadLinks(
     val doc = app.get(data, headers = headers).document
     println("Fetched movie page. Title: ${doc.title()}")
 
-  /* val html = doc.html()
-    println("=== HTML DUMP START ===")
-    println(html.take(2000)) // first 2000 chars only (to avoid massive spam)
-     println("=== HTML DUMP END ===")*/
     val html = doc.html()
     println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
-
-     
-
+  
     // 2. Extract csrf__token from inline JS (main__obj)
     val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
     .find(html)?.groupValues?.get(1)
@@ -137,10 +131,11 @@ override suspend fun loadLinks(
   //  val qualities = doc.select("ul[class*=qualities] li[data-quality]")
     val qualities = doc.select("ul li[data-quality]")
 
-  
     // Fallback: extract psot_id if data-post not found
-    val fallbackPostId = Regex("'psot_id':\\s*'?(\\d+)'?")
-        .find(html)?.groupValues?.get(1)
+  //  val fallbackPostId = Regex("'psot_id':\\s*'?(\\d+)'?")
+      //  .find(html)?.groupValues?.get(1)
+     val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
+          .find(html)?.groupValues?.get(1)
 
     if ((qualities.isEmpty() && fallbackPostId.isNullOrBlank()) || csrf.isNullOrBlank()) {
         println("!!! ERROR: No qualities list or csrf_token not found")
@@ -152,17 +147,13 @@ override suspend fun loadLinks(
     for (q in qualities.ifEmpty { listOf() }) {
         val quality = q.attr("data-quality").ifBlank { "0" }
         //val postId = q.attr("data-post").ifBlank { fallbackPostId ?: "" }
-       // val postId = q.attr("data-post").ifBlank {
-         //   Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
-            //    .find(html)?.groupValues?.get(1) ?: ""
+        val postId = q.attr("data-post").ifBlank {
+            Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+                .find(html)?.groupValues?.get(1) ?: ""
 
-            val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
-                  .find(html)?.groupValues?.get(1)
 
 }
-
-              
-        
+    
         println("=== Trying quality $quality ===")
 
         val body = mapOf(
@@ -211,222 +202,5 @@ override suspend fun loadLinks(
     println("=== [ArabSeed] loadLinks END ===")
     return true
 }
-/*override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    println("=== [ArabSeed] loadLinks START ===")
-    println("Movie page: $data")
-
-    val headers = mutableMapOf(
-        "User-Agent" to USER_AGENT,
-        "Referer" to mainUrl
-    )
-
-    // 1. Open movie page
-    val doc = app.get(data, headers = headers).document
-    val html = doc.html()
-    println("Fetched movie page. Title: ${doc.title()}")
-
-    // 2. Extract csrf_token (hidden input, meta, or inline script)
-    val csrf = doc.selectFirst("input[name=csrf_token]")?.attr("value")
-        ?: Regex("csrf_token\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
-            .find(html)?.groupValues?.get(1)
-
-    println("Extracted csrf_token = $csrf")
-
-    // 3. Extract list of servers (li[data-post][data-qu])
-    val servers = doc.select("li[data-post][data-qu]")
-    if (servers.isEmpty() || csrf.isNullOrBlank()) {
-        println("!!! ERROR: Missing servers or csrf_token")
-        return false
-    }
-
-    val ajaxUrl = "$mainUrl/get__quality__servers/"
-
-    // 4. Loop over available qualities/servers
-    for (li in servers) {
-        val postId = li.attr("data-post")
-        val quality = li.attr("data-qu")
-        val serverId = li.attr("data-server")
-
-        println("=== Trying quality $quality, server $serverId ===")
-
-        val body = mapOf(
-            "post_id" to postId,
-            "quality" to quality,
-            "csrf_token" to csrf
-        )
-
-        try {
-            val json = app.post(
-                ajaxUrl,
-                data = body,
-                headers = headers + mapOf(
-                    "Referer" to data,
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
-                )
-            ).parsed<Map<String, Any?>>()
-
-            val iframeUrl = json["server"] as? String
-            println("AJAX returned iframeUrl = $iframeUrl")
-
-            if (iframeUrl.isNullOrBlank()) continue
-
-            // 5. Open iframe page
-            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
-            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-                ?: iframeDoc.selectFirst("video")?.attr("src")
-
-            println("Extracted videoUrl = $videoUrl")
-
-            if (videoUrl.isNullOrBlank()) {
-                println("!!! ERROR: No video found for quality $quality (server $serverId)")
-                continue
-            }
-
-            // 6. Return link
-            callback.invoke(
-                newExtractorLink(
-                    source = "ArabSeed",
-                    name = "ArabSeed ${quality}p (S$serverId)",
-                    url = videoUrl
-                ) {
-                    referer = iframeUrl
-                    this.quality = quality.toIntOrNull() ?: 0
-                }
-            )
-            println(">>> SUCCESS: $quality → $videoUrl")
-
-        } catch (e: Exception) {
-            println("!!! ERROR: Failed quality $quality (server $serverId) → ${e.message}")
-        }
-    }
-
-    println("=== [ArabSeed] loadLinks END ===")
-    return true
-}
-/*override suspend fun loadLinks(
-    data: String,
-    isCasting: Boolean,
-    subtitleCallback: (SubtitleFile) -> Unit,
-    callback: (ExtractorLink) -> Unit
-): Boolean {
-    println("=== [ArabSeed] loadLinks START ===")
-    println("Movie page: $data")
-
-    val headers = mutableMapOf(
-        "User-Agent" to USER_AGENT,
-        "Referer" to mainUrl
-    )
-
-    // 1. Open movie page
-    val doc = app.get(data, headers = headers).document
-    val html = doc.html()
-    println("Fetched movie page. Title: ${doc.title()}")
-
-    // 2. Extract csrf_token (robust version)
-    var csrf: String? = null
-
-    // a) hidden input
-    csrf = doc.selectFirst("input[name=csrf_token]")?.attr("value")
-
-    // b) meta tag
-    if (csrf.isNullOrBlank()) {
-        csrf = doc.selectFirst("meta[name=csrf-token], meta[name=csrf_token]")?.attr("content")
-    }
-
-    // c) regex in inline script (_token, csrf_token, token)
-    if (csrf.isNullOrBlank()) {
-        csrf = Regex("(csrf_token|_token|token)\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
-            .find(html)?.groupValues?.get(2)
-    }
-
-    // d) cookie fallback
-   // if (csrf.isNullOrBlank()) {
-      //  val cookies = app.cookieStore.get(mainUrl) // adjust to your client
-     //   csrf = cookies?.get("csrf_token")
-      //      ?: cookies?.get("_token")
-        //    ?: cookies?.get("XSRF-TOKEN")
- //   }
-
-    println("Extracted csrf_token = $csrf")
-
-    // 3. Extract list of servers (li[data-post][data-qu])
-    val servers = doc.select("li[data-post][data-qu]")
-    if (servers.isEmpty() || csrf.isNullOrBlank()) {
-        println("!!! ERROR: Missing servers or csrf_token")
-        return false
-    }
-
-    val ajaxUrl = "$mainUrl/get__quality__servers/"
-
-    // 4. Loop over available qualities/servers
-    for (li in servers) {
-        val postId = li.attr("data-post")
-        val quality = li.attr("data-qu")
-        val serverId = li.attr("data-server")
-
-        println("=== Trying quality $quality, server $serverId ===")
-
-        val body = mapOf(
-            "post_id" to postId,
-            "quality" to quality,
-            "csrf_token" to csrf
-        )
-
-        try {
-            val json = app.post(
-                ajaxUrl,
-                data = body,
-                headers = headers + mapOf(
-                    "Referer" to data,
-                    "X-Requested-With" to "XMLHttpRequest",
-                    "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8"
-                )
-            ).parsed<Map<String, Any?>>()
-
-            val iframeUrl = json["server"] as? String
-            println("AJAX returned iframeUrl = $iframeUrl")
-
-            if (iframeUrl.isNullOrBlank()) continue
-
-            // 5. Open iframe page
-            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
-            val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
-                ?: iframeDoc.selectFirst("video")?.attr("src")
-
-            println("Extracted videoUrl = $videoUrl")
-
-            if (videoUrl.isNullOrBlank()) {
-                println("!!! ERROR: No video found for quality $quality (server $serverId)")
-                continue
-            }
-
-            // 6. Return link
-            callback.invoke(
-                newExtractorLink(
-                    source = "ArabSeed",
-                    name = "ArabSeed ${quality}p (S$serverId)",
-                    url = videoUrl
-                ) {
-                    referer = iframeUrl
-                    this.quality = quality.toIntOrNull() ?: 0
-                }
-            )
-            println(">>> SUCCESS: $quality → $videoUrl")
-
-        } catch (e: Exception) {
-            println("!!! ERROR: Failed quality $quality (server $serverId) → ${e.message}")
-        }
-    }
-
-    println("=== [ArabSeed] loadLinks END ===")
-    return true
-}*/
-
 
 }
