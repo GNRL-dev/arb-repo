@@ -342,12 +342,12 @@ override suspend fun loadLinks(
     }
 
     // d) cookie fallback
-    if (csrf.isNullOrBlank()) {
-        val cookies = app.cookieStore.get(mainUrl) // adjust to your client
-        csrf = cookies?.get("csrf_token")
-            ?: cookies?.get("_token")
-            ?: cookies?.get("XSRF-TOKEN")
-    }
+   // if (csrf.isNullOrBlank()) {
+      //  val cookies = app.cookieStore.get(mainUrl) // adjust to your client
+     //   csrf = cookies?.get("csrf_token")
+      //      ?: cookies?.get("_token")
+        //    ?: cookies?.get("XSRF-TOKEN")
+ //   }
 
     println("Extracted csrf_token = $csrf")
 
