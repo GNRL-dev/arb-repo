@@ -168,7 +168,8 @@ override suspend fun loadLinks(
         val quality = "720"
         val ajaxUrl = "$mainUrl/get__quality__servers/"
         val body = mapOf(
-            "post_id" to postIdFinal,
+        //    "post_id" to postIdFinal,
+            "post_id" to (postId ?: ""),
             "quality" to quality,
             "csrf_token" to (csrf ?: "")
         )
