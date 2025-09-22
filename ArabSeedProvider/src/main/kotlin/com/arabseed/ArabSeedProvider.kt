@@ -155,7 +155,9 @@ override suspend fun loadLinks(
     val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
 
     for (q in qualitiesToTry) {
-        val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
+        val quality = q?.attr("data-quality")?.ifBlank { "480" } ?: "480"
+      //  val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
+      //  val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
         val postIdFinal = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
         println("DEBUG: trying quality = $quality, postId = $postIdFinal")
