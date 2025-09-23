@@ -146,10 +146,10 @@ override suspend fun loadLinks(
     println("DEBUG: qualities found = ${qualities.size}")
 
 
- // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-//    println("!!! ERROR: No qualities list or csrf_token found")
- //   return false
-//}
+  if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
+     println("!!! ERROR: No qualities list or csrf_token found")
+     return false
+  }
 
 
     // 5. Loop over qualities (or fallback once if empty)
