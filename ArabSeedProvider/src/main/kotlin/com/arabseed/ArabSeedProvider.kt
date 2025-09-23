@@ -133,11 +133,11 @@ override suspend fun loadLinks(
     println("DEBUG: extracted csrf_token = $csrf")
 
     // 3. Extract postId from page JSON
-   val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
-          .find(html)?.groupValues?.get(1)
+  // val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
+        //  .find(html)?.groupValues?.get(1)
 
-// val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
-  //  .find(html)?.groupValues?.get(1)
+ val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+    .find(html)?.groupValues?.get(1)
     
     println("DEBUG: extracted postId = $postId")
 
@@ -161,12 +161,12 @@ override suspend fun loadLinks(
      //   val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
         val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
-     /*   println("DEBUG: trying quality = $quality, postId = $postId")
+     /  println("DEBUG: trying quality = $quality, postId = $postId")
         println("DEBUG: quality = $quality")
         println("DEBUG: postId = $postId")
-        println("DEBUG: csrf = $csrf")*/
+        println("DEBUG: csrf = $csrf")
 
-       // val quality = "720"
+       
         val ajaxUrl = "$mainUrl/get__quality__servers/"
         val body = mapOf(
             "post_id" to postId,
