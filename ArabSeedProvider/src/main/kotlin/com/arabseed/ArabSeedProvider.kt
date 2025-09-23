@@ -192,13 +192,13 @@ override suspend fun loadLinks(
                 println("!!! ERROR: No video found for $quality")
                 continue
             }*/
-
+         val safeVideoUrl = videoUrl ?: continue
             // 7. Return link
             callback.invoke(
                 newExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed ${quality}p",
-                    url = videoUrl
+                    url = safeVideoUrl
                 ) {
                     referer = iframeUrl
                     this.quality = quality.toIntOrNull() ?: 0
