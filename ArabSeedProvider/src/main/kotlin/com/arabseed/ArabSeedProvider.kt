@@ -125,48 +125,19 @@ override suspend fun loadLinks(
     println("Fetched movie page. Title: ${doc.title()}")
 
     val html = doc.html()
-    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
+ //   println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
 
     // 2. Extract csrf token
     val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
         .find(html)?.groupValues?.get(1)
-    println("DEBUG: extracted csrf_token = $csrf")
+   // println("DEBUG: extracted csrf_token = $csrf")
 
     // 3. Extract postId from page JSON
    val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
           .find(html)?.groupValues?.get(1)
 
-// val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
-  //  .find(html)?.groupValues?.get(1)
-    
-    println("DEBUG: extracted postId = $postId")
+   // println("DEBUG: extracted postId = $postId")
 
-    // 4. Extract qualities
-   // val qualities = doc.select("ul li[data-quality]")
-   // println("DEBUG: qualities found = ${qualities.size}")
-
-
- // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-//    println("!!! ERROR: No qualities list or csrf_token found")
- //   return false
-//}
-
-
-    // 5. Loop over qualities (or fallback once if empty)
-   // val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
-
-    //for (q in qualitiesToTry) {
-      //  val quality = q?.attr("data-quality")?.ifBlank { "480" } ?: "480"
-      //  val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
-     //   val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
-       // val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
-
-     /*   println("DEBUG: trying quality = $quality, postId = $postId")
-        println("DEBUG: quality = $quality")
-        println("DEBUG: postId = $postId")
-        println("DEBUG: csrf = $csrf")*/
-
-       // val quality = "720"
 
            // 4. Define the qualities we want to fetch
     val qualitiesToTry = listOf("1080", "720", "480")
@@ -175,32 +146,31 @@ override suspend fun loadLinks(
     for (quality in qualitiesToTry) {
         val ajaxUrl = "$mainUrl/get__quality__servers/"
         val body = mapOf(
-            "post_id" to postId,
+            "post_id" to postId.orEmpty(),
             "quality" to quality,
-            "csrf_token" to (csrf ?: "")
+            "csrf_token" to csrf.orEmpty()
         )
       //  println("DEBUG: POST $ajaxUrl with $body")
 
         try {
             val json = app.post(ajaxUrl, data = body, headers = headers).parsed<Map<String, Any?>>()
-            val iframeUrl = json["server"] as? String
-          //  println("DEBUG: iframeUrl = $iframeUrl")
+            val iframeUrl = json["server"] as? String ?: continue
+            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
 
-            /*if (iframeUrl.isNullOrBlank()) {
-                println("!!! ERROR: No iframe URL returned for quality $quality")
-                continue
-            }*/
+           
 
             // 6. Fetch iframe page
-            val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
+           
             val videoUrl = iframeDoc.selectFirst("video > source")?.attr("src")
                 ?: iframeDoc.selectFirst("video")?.attr("src")
+                ?: ""
+     if         (videoUrl.isBlank()) continue
           //  println("DEBUG: extracted videoUrl = $videoUrl")
 
-            if (videoUrl.isNullOrBlank()) {
+         /*   if (videoUrl.isNullOrBlank()) {
                 println("!!! ERROR: No video found for $quality")
                 continue
-            }
+            }*/
 
             // 7. Return link
             callback.invoke(
