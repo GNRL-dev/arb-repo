@@ -195,7 +195,10 @@ override suspend fun loadLinks(
              //   println("!!! ERROR: No video found for $quality")
               //  continue
             //}
-        val safeVideoUrl = videoUrl ?: continue
+      //  val safeVideoUrl = videoUrl ?: continue
+           val safeVideoUrl = videoUrl ?: return false
+
+            
             // 7. Return link
             callback.invoke(
                 newExtractorLink(
