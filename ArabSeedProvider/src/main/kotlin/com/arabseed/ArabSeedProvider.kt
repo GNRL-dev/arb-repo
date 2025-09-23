@@ -142,8 +142,8 @@ override suspend fun loadLinks(
     println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
-    val qualities = doc.select("ul li[data-quality]")
-    println("DEBUG: qualities found = ${qualities.size}")
+   // val qualities = doc.select("ul li[data-quality]")
+   // println("DEBUG: qualities found = ${qualities.size}")
 
 
  // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
@@ -153,13 +153,13 @@ override suspend fun loadLinks(
 
 
     // 5. Loop over qualities (or fallback once if empty)
-    val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
+   // val qualitiesToTry = if (qualities.isNotEmpty()) qualities else listOf(null)
 
-    for (q in qualitiesToTry) {
+    //for (q in qualitiesToTry) {
       //  val quality = q?.attr("data-quality")?.ifBlank { "480" } ?: "480"
-        val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
+      //  val quality = q?.attr("data-quality")?.ifBlank { "720" } ?: "720"
      //   val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
-        val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
+       // val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
      /*   println("DEBUG: trying quality = $quality, postId = $postId")
         println("DEBUG: quality = $quality")
@@ -167,6 +167,12 @@ override suspend fun loadLinks(
         println("DEBUG: csrf = $csrf")*/
 
        // val quality = "720"
+
+           // 4. Define the qualities we want to fetch
+    val qualitiesToTry = listOf("1080", "720", "480")
+    var success = false
+
+    for (quality in qualitiesToTry) {
         val ajaxUrl = "$mainUrl/get__quality__servers/"
         val body = mapOf(
             "post_id" to postId,
@@ -180,10 +186,10 @@ override suspend fun loadLinks(
             val iframeUrl = json["server"] as? String
           //  println("DEBUG: iframeUrl = $iframeUrl")
 
-            if (iframeUrl.isNullOrBlank()) {
+            /*if (iframeUrl.isNullOrBlank()) {
                 println("!!! ERROR: No iframe URL returned for quality $quality")
                 continue
-            }
+            }*/
 
             // 6. Fetch iframe page
             val iframeDoc = app.get(iframeUrl, headers = mapOf("Referer" to data)).document
