@@ -142,8 +142,8 @@ override suspend fun loadLinks(
     println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
-  //  val qualities = doc.select("ul li[data-quality]")
- //   println("DEBUG: qualities found = ${qualities.size}")
+    val qualities = doc.select("ul li[data-quality]")
+    println("DEBUG: qualities found = ${qualities.size}")
 
 
  // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
