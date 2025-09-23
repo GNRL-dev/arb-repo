@@ -161,7 +161,7 @@ override suspend fun loadLinks(
      //   val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
         val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
-     /  println("DEBUG: trying quality = $quality, postId = $postId")
+        println("DEBUG: trying quality = $quality, postId = $postId")
         println("DEBUG: quality = $quality")
         println("DEBUG: postId = $postId")
         println("DEBUG: csrf = $csrf")
