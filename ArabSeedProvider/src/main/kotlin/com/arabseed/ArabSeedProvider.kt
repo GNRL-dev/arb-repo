@@ -111,8 +111,8 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-  //  println("=== [ArabSeed] loadLinks START ===")
-  //  println("Movie page: $data")
+    println("=== [ArabSeed] loadLinks START ===")
+    println("Movie page: $data")
 
     val headers = mapOf(
         "User-Agent" to USER_AGENT,
@@ -122,25 +122,28 @@ override suspend fun loadLinks(
 
     // 1. Fetch movie page
     val doc = app.get(data, headers = headers).document
-   // println("Fetched movie page. Title: ${doc.title()}")
+    println("Fetched movie page. Title: ${doc.title()}")
 
     val html = doc.html()
-  //  println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
+    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
 
     // 2. Extract csrf token
     val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
         .find(html)?.groupValues?.get(1)
-  //  println("DEBUG: extracted csrf_token = $csrf")
+    println("DEBUG: extracted csrf_token = $csrf")
 
     // 3. Extract postId from page JSON
    val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
           .find(html)?.groupValues?.get(1)
+
+// val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
+  //  .find(html)?.groupValues?.get(1)
     
-   // println("DEBUG: extracted postId = $postId")
+    println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
     val qualities = doc.select("ul li[data-quality]")
-  //  println("DEBUG: qualities found = ${qualities.size}")
+    println("DEBUG: qualities found = ${qualities.size}")
 
 
  // if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
@@ -188,17 +191,17 @@ override suspend fun loadLinks(
                 ?: iframeDoc.selectFirst("video")?.attr("src")
           //  println("DEBUG: extracted videoUrl = $videoUrl")
 
-           /* if (videoUrl.isNullOrBlank()) {
+            if (videoUrl.isNullOrBlank()) {
                 println("!!! ERROR: No video found for $quality")
                 continue
-            }*/
-         val safeVideoUrl = videoUrl ?: continue
+            }
+
             // 7. Return link
             callback.invoke(
                 newExtractorLink(
                     source = "ArabSeed",
                     name = "ArabSeed ${quality}p",
-                    url = safeVideoUrl
+                    url = videoUrl
                 ) {
                     referer = iframeUrl
                     this.quality = quality.toIntOrNull() ?: 0
