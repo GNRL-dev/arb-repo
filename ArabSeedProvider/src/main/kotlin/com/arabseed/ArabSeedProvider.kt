@@ -200,7 +200,7 @@ override suspend fun loadLinks(
             callback.invoke(
                 newExtractorLink(
                     source = "ArabSeed",
-                    name = "ArabSeed ${quality}p",
+                    name = "ArabSeed ",
                     url = videoUrl
                 ) {
                     referer = iframeUrl
