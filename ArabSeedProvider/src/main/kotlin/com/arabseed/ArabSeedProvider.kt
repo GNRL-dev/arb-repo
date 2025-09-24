@@ -111,8 +111,8 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    println("=== [ArabSeed] loadLinks START ===")
-    println("Movie page: $data")
+   // println("=== [ArabSeed] loadLinks START ===")
+  //  println("Movie page: $data")
 
     val headers = mapOf(
         "User-Agent" to USER_AGENT,
@@ -122,15 +122,15 @@ override suspend fun loadLinks(
 
     // 1. Fetch movie page
     val doc = app.get(data, headers = headers).document
-    println("Fetched movie page. Title: ${doc.title()}")
+    // println("Fetched movie page. Title: ${doc.title()}")
 
     val html = doc.html()
-    println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
+    // println("DEBUG main__obj: " + html.substringAfter("main__obj").take(500))
 
     // 2. Extract csrf token
     val csrf = Regex("csrf__token['\"]?\\s*[:=]\\s*['\"]?(\\w+)['\"]?")
         .find(html)?.groupValues?.get(1)
-    println("DEBUG: extracted csrf_token = $csrf")
+   // println("DEBUG: extracted csrf_token = $csrf")
 
     // 3. Extract postId from page JSON
   // val postId = Regex("object__info\\.psot_id\\s*[:=]\\s*['\"]?(\\d+)['\"]?")
@@ -139,15 +139,15 @@ override suspend fun loadLinks(
  val postId = Regex("'psot_id'\\s*:\\s*'?(\\d+)'?")
     .find(html)?.groupValues?.get(1)
     
-    println("DEBUG: extracted postId = $postId")
+   // println("DEBUG: extracted postId = $postId")
 
     // 4. Extract qualities
     val qualities = doc.select("ul li[data-quality]")
-    println("DEBUG: qualities found = ${qualities.size}")
+  //  println("DEBUG: qualities found = ${qualities.size}")
 
 
   if ((qualities.isEmpty() && postId.isNullOrBlank()) || csrf.isNullOrBlank()) {
-     println("!!! ERROR: No qualities list or csrf_token found")
+   //  println("!!! ERROR: No qualities list or csrf_token found")
      return false
   }
 
@@ -161,10 +161,10 @@ override suspend fun loadLinks(
      //   val quality = q?.attr("data-quality")?.ifBlank { "1080" } ?: "1080" 
         val postId = q?.attr("data-post")?.ifBlank { postId ?: "" } ?: postId ?: ""
 
-        println("DEBUG: trying quality = $quality, postId = $postId")
+     /*   println("DEBUG: trying quality = $quality, postId = $postId")
         println("DEBUG: quality = $quality")
         println("DEBUG: postId = $postId")
-        println("DEBUG: csrf = $csrf")
+        println("DEBUG: csrf = $csrf")*/
 
        
         val ajaxUrl = "$mainUrl/get__quality__servers/"
@@ -181,7 +181,7 @@ override suspend fun loadLinks(
           //  println("DEBUG: iframeUrl = $iframeUrl")
 
             if (iframeUrl.isNullOrBlank()) {
-                println("!!! ERROR: No iframe URL returned for quality $quality")
+               // println("!!! ERROR: No iframe URL returned for quality $quality")
                 continue
             }
 
